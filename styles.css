@@ -127,15 +127,10 @@ ul {
     font-weight: 700;
 }
 
-.logo-icon {
-    color: var(--color-red);
-    font-size: 2rem;
-}
-
-.logo-text {
-    background: linear-gradient(to right, var(--color-blue), var(--color-purple));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.logo-img {
+    height: 50px;
+    width: auto;
+    border-radius: 50%;
 }
 
 .nav-links {
@@ -562,9 +557,12 @@ footer {
     gap: 20px;
 }
 
-.footer-brand h3 {
-    color: var(--color-white);
+.footer-brand .footer-logo {
+    height: 80px;
+    width: auto;
     margin-bottom: 10px;
+    border-radius: 50%;
+    background-color: var(--color-white);
 }
 
 .footer-socials {
