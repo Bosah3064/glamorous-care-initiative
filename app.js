@@ -143,4 +143,81 @@ document.addEventListener('DOMContentLoaded', () => {
             slideInterval = setInterval(nextSlide, 5000);
         }
     }
+
+    // Hero Carousel Logic
+    const heroSlides = Array.from(document.querySelectorAll('.hero-slide'));
+    const heroNextBtn = document.getElementById('heroNext');
+    const heroPrevBtn = document.getElementById('heroPrev');
+    const heroDotsContainer = document.getElementById('heroDots');
+    
+    if (heroSlides.length > 0) {
+        let currentHeroIndex = 0;
+        
+        // Create hero dots
+        heroSlides.forEach((_, index) => {
+            const dot = document.createElement('button');
+            dot.classList.add('hero-dot');
+            if (index === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => {
+                goToHeroSlide(index);
+                resetHeroInterval();
+            });
+            heroDotsContainer.appendChild(dot);
+        });
+        
+        const heroDots = Array.from(document.querySelectorAll('.hero-dot'));
+        
+        function updateHeroDots() {
+            heroDots.forEach(dot => dot.classList.remove('active'));
+            heroDots[currentHeroIndex].classList.add('active');
+        }
+        
+        function goToHeroSlide(index) {
+            heroSlides[currentHeroIndex].classList.remove('active');
+            currentHeroIndex = index;
+            heroSlides[currentHeroIndex].classList.add('active');
+            
+            // Re-trigger animations
+            const currentContent = heroSlides[currentHeroIndex].querySelectorAll('.animate-fade-in-up');
+            currentContent.forEach(el => {
+                el.style.animation = 'none';
+                void el.offsetWidth; // trigger reflow
+                el.style.animation = null;
+            });
+            
+            updateHeroDots();
+        }
+        
+        function nextHeroSlide() {
+            let nextIndex = (currentHeroIndex + 1) % heroSlides.length;
+            goToHeroSlide(nextIndex);
+        }
+        
+        function prevHeroSlide() {
+            let prevIndex = (currentHeroIndex - 1 + heroSlides.length) % heroSlides.length;
+            goToHeroSlide(prevIndex);
+        }
+        
+        if (heroNextBtn) {
+            heroNextBtn.addEventListener('click', () => {
+                nextHeroSlide();
+                resetHeroInterval();
+            });
+        }
+        
+        if (heroPrevBtn) {
+            heroPrevBtn.addEventListener('click', () => {
+                prevHeroSlide();
+                resetHeroInterval();
+            });
+        }
+        
+        // Auto-slide every 6 seconds
+        let heroSlideInterval = setInterval(nextHeroSlide, 6000);
+        
+        function resetHeroInterval() {
+            clearInterval(heroSlideInterval);
+            heroSlideInterval = setInterval(nextHeroSlide, 6000);
+        }
+    }
 });

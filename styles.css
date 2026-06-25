@@ -234,20 +234,120 @@ ul {
 /* ===========================
    HOME SECTION
    =========================== */
-.hero {
-    background: linear-gradient(rgba(29, 95, 153, 0.85), rgba(104, 54, 105, 0.85)), url('assets/hero.png') center/cover no-repeat;
+.hero-carousel {
+    position: relative;
+    width: 100%;
     min-height: 650px;
+    overflow: hidden;
+    border-radius: 0 0 50px 50px;
+    margin-top: -60px;
+    margin-bottom: 40px;
+    background: var(--color-dark);
+}
+
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     color: var(--color-white);
     padding: 40px 20px;
-    border-radius: 0 0 50px 50px;
-    margin-top: -60px;
-    margin-bottom: 40px;
+    z-index: 1;
 }
 
+.hero-slide.active {
+    opacity: 1;
+    z-index: 2;
+}
+
+/* Different backgrounds for different slides */
+.hero-slide.slide-1 {
+    background: linear-gradient(rgba(29, 95, 153, 0.85), rgba(104, 54, 105, 0.85)), url('assets/hero.png') center/cover no-repeat;
+}
+
+.hero-slide.slide-2 {
+    background: linear-gradient(rgba(165, 36, 61, 0.85), rgba(29, 95, 153, 0.85)), url('assets/chairman.jpg') center/cover no-repeat;
+}
+
+.hero-slide.slide-3 {
+    background: linear-gradient(rgba(104, 54, 105, 0.85), rgba(165, 36, 61, 0.85)), url('assets/vice-chair.jpg') center/cover no-repeat;
+}
+
+.hero-content {
+    max-width: 800px;
+    position: relative;
+    z-index: 3;
+}
+
+.hero-icon {
+    font-size: 5rem;
+    color: var(--color-white);
+    margin-bottom: 20px;
+    text-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Controls */
+.hero-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--color-white);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 10;
+    transition: var(--transition);
+    backdrop-filter: blur(5px);
+}
+
+.hero-btn:hover {
+    background: var(--color-white);
+    color: var(--color-blue);
+}
+
+.hero-btn.prev {
+    left: 20px;
+}
+
+.hero-btn.next {
+    right: 20px;
+}
+
+.hero-dots {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+.hero-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.hero-dot.active {
+    background: var(--color-white);
+    transform: scale(1.3);
+}
 .hero-logo {
     width: 120px;
     height: 120px;
