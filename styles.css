@@ -542,6 +542,114 @@ ul {
     font-size: 1.1rem;
 }
 
+/* Leader Quotes */
+.leader-quote {
+    font-style: italic;
+    color: var(--color-purple);
+    background: linear-gradient(135deg, rgba(29, 95, 153, 0.05), rgba(165, 36, 61, 0.05));
+    padding: 12px 18px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    border-left: 3px solid var(--color-purple);
+}
+
+.leader-quote i {
+    font-size: 0.7rem;
+    color: var(--color-red);
+    vertical-align: top;
+}
+
+/* Inspirational Team Banner */
+.team-banner {
+    margin-top: 50px;
+}
+
+.banner-inner {
+    background: linear-gradient(135deg, var(--color-blue), var(--color-purple), var(--color-red));
+    padding: 50px 40px;
+    border-radius: 20px;
+    text-align: center;
+    color: var(--color-white);
+    position: relative;
+    overflow: hidden;
+}
+
+.banner-inner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    animation: bannerGlow 6s ease-in-out infinite alternate;
+}
+
+@keyframes bannerGlow {
+    from { transform: translate(-10%, -10%); }
+    to { transform: translate(10%, 10%); }
+}
+
+.banner-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--color-white);
+    padding: 5px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.banner-inner h3 {
+    color: var(--color-white);
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.banner-inner p {
+    max-width: 700px;
+    margin: 0 auto 25px;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    opacity: 0.95;
+    position: relative;
+    z-index: 1;
+}
+
+.banner-values {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.banner-values span {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(5px);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: var(--transition);
+}
+
+.banner-values span:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.banner-values i {
+    margin-right: 6px;
+}
+
 /* ===========================
    ACTIVITIES SECTION
    =========================== */
