@@ -110,45 +110,65 @@
                 <p>Meet the dedicated office bearers guiding our initiative forward. Our leaders are elected by members through a democratic process and serve a fixed term of one year.</p>
             </div>
 
-            <!-- Featured Leader: Chairman -->
-            <div class="container featured-leader">
-                <div class="leader-card featured">
-                    <div class="leader-photo-wrapper">
-                        <img src="assets/chairman.jpg" alt="Eliab Omiti - Chairman" class="leader-photo">
-                        <div class="leader-badge"><i class="fa-solid fa-crown"></i></div>
-                    </div>
-                    <div class="leader-details">
-                        <h3>Eliab Omiti</h3>
-                        <span class="leader-role">Chairman</span>
-                        <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> A true leader does not create followers — he creates more leaders. Together, we are building something beautiful that will outlast us all. <i class="fa-solid fa-quote-right"></i></p>
-                        <p>Provides executive leadership to the Group, presides over all meetings of the Executive Committee and General Meetings, organizes meeting agendas, encourages participation by all members, and represents the Group at external meetings.</p>
-                    </div>
-                </div>
-            </div>
+            <!-- Leadership Carousel -->
+            <div class="container carousel-container">
+                <div class="carousel-track-wrapper">
+                    <div class="carousel-track" id="leadershipCarousel">
+                        <!-- Leader 1: Chairman -->
+                        <div class="carousel-slide">
+                            <div class="leader-card featured">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/chairman.jpg" alt="Eliab Omiti - Chairman" class="leader-photo">
+                                    <div class="leader-badge"><i class="fa-solid fa-crown"></i></div>
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Eliab Omiti</h3>
+                                    <span class="leader-role">Chairman</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> A true leader does not create followers — he creates more leaders. Together, we are building something beautiful that will outlast us all. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Provides executive leadership to the Group, presides over all meetings of the Executive Committee and General Meetings, organizes meeting agendas, encourages participation by all members, and represents the Group at external meetings.</p>
+                                </div>
+                            </div>
+                        </div>
 
-            <!-- Other Leaders -->
-            <div class="container leaders-grid">
-                <div class="leader-card">
-                    <div class="leader-photo-wrapper">
-                        <img src="assets/vice-chair.jpg" alt="Damaris Mokeira - Vice Chair" class="leader-photo">
-                    </div>
-                    <div class="leader-details">
-                        <h3>Damaris Mokeira</h3>
-                        <span class="leader-role">Vice Chairperson</span>
-                        <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Strength is not in standing alone, but in lifting each other up. When one of us rises, we all rise. <i class="fa-solid fa-quote-right"></i></p>
-                        <p>Performs duties assigned by the Chairman and acts in his absence to ensure continuity of leadership for the Group.</p>
+                        <!-- Leader 2: Vice Chair -->
+                        <div class="carousel-slide">
+                            <div class="leader-card">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/vice-chair.jpg" alt="Damaris Mokeira - Vice Chair" class="leader-photo">
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Damaris Mokeira</h3>
+                                    <span class="leader-role">Vice Chairperson</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Strength is not in standing alone, but in lifting each other up. When one of us rises, we all rise. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Performs duties assigned by the Chairman and acts in his absence to ensure continuity of leadership for the Group.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leader 3: Treasurer/Secretary -->
+                        <div class="carousel-slide">
+                            <div class="leader-card">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/treasurer.jpg" alt="Millicent Kerubo - Treasurer/Secretary" class="leader-photo">
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Millicent Kerubo</h3>
+                                    <span class="leader-role">Treasurer / Secretary</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Every coin we steward is a seed of hope. Faithfulness in the little things is what builds lasting trust. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Manages all Group finances, maintains proper books of accounts, handles correspondence, and keeps minutes of all meetings.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="leader-card">
-                    <div class="leader-photo-wrapper">
-                        <img src="assets/treasurer.jpg" alt="Millicent Kerubo - Treasurer/Secretary" class="leader-photo">
+                
+                <!-- Carousel Controls -->
+                <div class="carousel-controls">
+                    <button class="carousel-btn prev" id="carouselPrev"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="carousel-dots" id="carouselDots">
+                        <!-- Dots injected by JS -->
                     </div>
-                    <div class="leader-details">
-                        <h3>Millicent Kerubo</h3>
-                        <span class="leader-role">Treasurer / Secretary</span>
-                        <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Every coin we steward is a seed of hope. Faithfulness in the little things is what builds lasting trust. <i class="fa-solid fa-quote-right"></i></p>
-                        <p>Manages all Group finances, maintains proper books of accounts, handles correspondence, and keeps minutes of all meetings.</p>
-                    </div>
+                    <button class="carousel-btn next" id="carouselNext"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
             </div>
 

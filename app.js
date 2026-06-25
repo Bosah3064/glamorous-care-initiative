@@ -75,4 +75,72 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Carousel Logic
+    const track = document.getElementById('leadershipCarousel');
+    const slides = Array.from(document.querySelectorAll('.carousel-slide'));
+    const nextBtn = document.getElementById('carouselNext');
+    const prevBtn = document.getElementById('carouselPrev');
+    const dotsContainer = document.getElementById('carouselDots');
+    
+    if (track && slides.length > 0) {
+        let currentIndex = 0;
+        
+        // Create dots
+        slides.forEach((_, index) => {
+            const dot = document.createElement('button');
+            dot.classList.add('carousel-dot');
+            if (index === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => {
+                goToSlide(index);
+                resetInterval();
+            });
+            dotsContainer.appendChild(dot);
+        });
+        
+        const dots = Array.from(document.querySelectorAll('.carousel-dot'));
+        
+        function updateDots() {
+            dots.forEach(dot => dot.classList.remove('active'));
+            dots[currentIndex].classList.add('active');
+        }
+        
+        function goToSlide(index) {
+            currentIndex = index;
+            track.style.transform = `translateX(-${currentIndex * 100}%)`;
+            updateDots();
+        }
+        
+        function nextSlide() {
+            currentIndex = (currentIndex + 1) % slides.length;
+            goToSlide(currentIndex);
+        }
+        
+        function prevSlide() {
+            currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+            goToSlide(currentIndex);
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                nextSlide();
+                resetInterval();
+            });
+        }
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                prevSlide();
+                resetInterval();
+            });
+        }
+        
+        // Auto-slide every 5 seconds
+        let slideInterval = setInterval(nextSlide, 5000);
+        
+        function resetInterval() {
+            clearInterval(slideInterval);
+            slideInterval = setInterval(nextSlide, 5000);
+        }
+    }
 });
