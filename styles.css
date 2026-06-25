@@ -1209,8 +1209,25 @@ footer {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     color: #9ca3af;
     font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
+.designer-credit {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.designer-credit strong {
+    color: var(--color-white);
+    letter-spacing: 0.5px;
+}
+
+.designer-credit i {
+    margin-left: 5px;
+    color: var(--color-red);
+}
 /* ===========================
    ANIMATIONS
    =========================== */
