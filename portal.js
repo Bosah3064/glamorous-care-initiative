@@ -1029,7 +1029,7 @@ if (btnScanFile) {
                 }
 
                 // Check against existing members
-                const existingEmails = new Set(window.allMembers.map(m => m.email.toLowerCase()));
+                const existingEmails = new Set((allMembers || []).map(m => m.email.toLowerCase()));
                 
                 scannedMembersToImport = [];
                 
