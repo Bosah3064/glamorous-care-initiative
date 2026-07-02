@@ -45,7 +45,7 @@ let currentMember = null;
 let allMembers = [];
 
 // Admin roles that can see the admin panel
-const ADMIN_ROLES = ['admin', 'treasury', 'chairperson'];
+const ADMIN_ROLES = ['admin', 'treasury', 'chairperson', 'vice_chairperson'];
 
 // =============================================
 // LOGIN HANDLER
@@ -204,7 +204,8 @@ async function loadDashboard(user, preloadedMember = null) {
             const roleLabels = {
                 'admin': '🛡️ Admin',
                 'treasury': '💰 Treasury',
-                'chairperson': '👑 Chairperson'
+                'chairperson': '👑 Chairperson',
+                'vice_chairperson': '⭐ Vice Chairperson'
             };
             profileRole.textContent = roleLabels[member.role] || member.role;
             profileRole.style.display = 'inline-block';
@@ -384,11 +385,12 @@ function renderMembersList(members) {
             'admin': 'background: #dbeafe; color: #2563eb;',
             'treasury': 'background: #fef3c7; color: #d97706;',
             'chairperson': 'background: #f3e8ff; color: #7c3aed;',
+            'vice_chairperson': 'background: #e0e7ff; color: #4f46e5;',
             'member': m.status === 'active' ? 'background: #dcfce7; color: #16a34a;' : 'background: #fef3c7; color: #d97706;'
         };
         const roleLabel = m.role === 'member' 
             ? (m.status.charAt(0).toUpperCase() + m.status.slice(1)) 
-            : (m.role.charAt(0).toUpperCase() + m.role.slice(1));
+            : (m.role === 'vice_chairperson' ? 'Vice Chairperson' : m.role.charAt(0).toUpperCase() + m.role.slice(1));
         const badgeStyle = roleColors[m.role] || roleColors['member'];
         return `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; cursor: default;" onmouseover="this.style.background='#f8fafc';this.style.borderColor='var(--color-blue)'" onmouseout="this.style.background='';this.style.borderColor='#f3f4f6'">
