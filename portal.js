@@ -500,6 +500,20 @@ function setupAdminEventListeners() {
         });
     }
 
+    // View Member Payments dropdown
+    const viewPaymentsSelect = document.getElementById('viewPaymentsMember');
+    if (viewPaymentsSelect) {
+        viewPaymentsSelect.addEventListener('change', (e) => {
+            const memberId = e.target.value;
+            if (memberId) {
+                window.loadMemberPaymentsAdmin(memberId);
+            } else {
+                const section = document.getElementById('adminMemberPaymentsSection');
+                if (section) section.style.display = 'none';
+            }
+        });
+    }
+
     // Add Payment Form
     const addPaymentForm = document.getElementById('addPaymentForm');
     if (addPaymentForm) {
