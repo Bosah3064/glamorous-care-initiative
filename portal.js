@@ -1087,22 +1087,51 @@ if (btnScanFile) {
                                 }
                             });
 
+                            // Extract form details dynamically from ALL columns in the sheet
+                            const formDetails = {};
+                            headers.forEach(h => {
+                                const cleanH = h.trim().toLowerCase();
+                                const isPayment = paymentCols.some(col => col.header === h);
+                                
+                                // Do not save the primary name/email/phone or payment columns inside form_details
+                                if (cleanH !== emailHeader.toLowerCase() && 
+                                    cleanH !== nameHeader.toLowerCase() && 
+                                    (!phoneHeader || cleanH !== phoneHeader.toLowerCase()) && 
+                                    !isPayment) {
+                                    
+                                    // Map known headers to database standard keys
+                                    if (cleanH.includes('gender')) {
+                                        formDetails.gender = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('date of birth') || cleanH.includes('dob')) {
+                                        formDetails.date_of_birth = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('marital')) {
+                                        formDetails.marital_status = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('id number') || cleanH.includes('national id')) {
+                                        formDetails.id_number = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('branch')) {
+                                        formDetails.branch = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('occupation') || cleanH.includes('profession') || cleanH.includes('skill')) {
+                                        formDetails.occupation = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('kin name') || cleanH.includes('next of kin name')) {
+                                        formDetails.next_of_kin_name = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('kin phone') || cleanH.includes('next of kin phone')) {
+                                        formDetails.next_of_kin_phone = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('dependant count') || cleanH.includes('how many')) {
+                                        formDetails.dependant_count = (row[h] || "").toString().trim();
+                                    } else if (cleanH.includes('dependant') || cleanH.includes('dependent')) {
+                                        formDetails.dependants = (row[h] || "").toString().trim();
+                                    } else {
+                                        // Save any other unknown/custom columns as-is
+                                        formDetails[h] = (row[h] || "").toString().trim();
+                                    }
+                                }
+                            });
+
                             scannedMembersToImport.push({
                                 full_name: name,
                                 email: email,
                                 phone: phone,
-                                form_details: {
-                                    gender: genderHeader ? (row[genderHeader] || "").toString().trim() : "",
-                                    date_of_birth: dobHeader ? (row[dobHeader] || "").toString().trim() : "",
-                                    marital_status: maritalHeader ? (row[maritalHeader] || "").toString().trim() : "",
-                                    id_number: idHeader ? (row[idHeader] || "").toString().trim() : "",
-                                    branch: branchHeader ? (row[branchHeader] || "").toString().trim() : "",
-                                    occupation: occupationHeader ? (row[occupationHeader] || "").toString().trim() : "",
-                                    next_of_kin_name: nokNameHeader ? (row[nokNameHeader] || "").toString().trim() : "",
-                                    next_of_kin_phone: nokPhoneHeader ? (row[nokPhoneHeader] || "").toString().trim() : "",
-                                    dependants: dependantsHeader ? (row[dependantsHeader] || "").toString().trim() : "",
-                                    dependant_count: dependantCountHeader ? (row[dependantCountHeader] || "").toString().trim() : ""
-                                },
+                                form_details: formDetails,
                                 payments: payments
                             });
                         }
