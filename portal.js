@@ -973,3 +973,155 @@ if (editPaymentForm) {
         btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Payment Update';
     });
 }
+
+// =============================================
+// EXCEL BULK IMPORT LOGIC
+// =============================================
+let scannedMembersToImport = [];
+
+const btnScanFile = document.getElementById('btnScanFile');
+const importFile = document.getElementById('importFile');
+const importMsg = document.getElementById('importMsg');
+const importResults = document.getElementById('importResults');
+const importTableBody = document.getElementById('importTableBody');
+const newMembersCount = document.getElementById('newMembersCount');
+const btnProcessImport = document.getElementById('btnProcessImport');
+
+if (btnScanFile) {
+    btnScanFile.addEventListener('click', () => {
+        if (!importFile.files || importFile.files.length === 0) {
+            importMsg.textContent = "Please select an Excel or CSV file first.";
+            importMsg.className = "admin-msg error";
+            importMsg.style.display = "block";
+            return;
+        }
+
+        const file = importFile.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Assuming first sheet is the one we want
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convert sheet to JSON array
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                
+                if (json.length === 0) {
+                    throw new Error("The selected sheet is empty.");
+                }
+
+                // Try to find the correct column headers (case-insensitive, fuzzy match)
+                const headers = Object.keys(json[0]);
+                const emailHeader = headers.find(h => h.toLowerCase().includes('email'));
+                const nameHeader = headers.find(h => h.toLowerCase().includes('name'));
+                const phoneHeader = headers.find(h => h.toLowerCase().includes('phone'));
+
+                if (!emailHeader) {
+                    throw new Error("Could not find an 'Email' column in the spreadsheet.");
+                }
+                if (!nameHeader) {
+                    throw new Error("Could not find a 'Name' column in the spreadsheet.");
+                }
+
+                // Check against existing members
+                const existingEmails = new Set(window.allMembers.map(m => m.email.toLowerCase()));
+                
+                scannedMembersToImport = [];
+                
+                json.forEach(row => {
+                    const email = (row[emailHeader] || "").toString().trim();
+                    const name = (row[nameHeader] || "").toString().trim();
+                    const phone = phoneHeader ? (row[phoneHeader] || "").toString().trim() : "";
+                    
+                    if (email && name && !existingEmails.has(email.toLowerCase())) {
+                        // Also make sure we don't have duplicates in the spreadsheet itself
+                        if (!scannedMembersToImport.find(m => m.email.toLowerCase() === email.toLowerCase())) {
+                            scannedMembersToImport.push({
+                                full_name: name,
+                                email: email,
+                                phone: phone
+                            });
+                        }
+                    }
+                });
+
+                if (scannedMembersToImport.length === 0) {
+                    importMsg.textContent = "No new members found. All emails in the spreadsheet already exist in the system.";
+                    importMsg.className = "admin-msg success";
+                    importMsg.style.display = "block";
+                    importResults.style.display = "none";
+                } else {
+                    importMsg.style.display = "none";
+                    newMembersCount.textContent = scannedMembersToImport.length;
+                    
+                    importTableBody.innerHTML = scannedMembersToImport.map(m => `
+                        <tr>
+                            <td>${m.full_name}</td>
+                            <td>${m.email}</td>
+                            <td>${m.phone || '-'}</td>
+                        </tr>
+                    `).join('');
+                    
+                    importResults.style.display = "block";
+                }
+
+            } catch (err) {
+                console.error(err);
+                importMsg.textContent = "Error parsing file: " + err.message;
+                importMsg.className = "admin-msg error";
+                importMsg.style.display = "block";
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+if (btnProcessImport) {
+    btnProcessImport.addEventListener('click', async () => {
+        if (scannedMembersToImport.length === 0) return;
+        
+        btnProcessImport.disabled = true;
+        btnProcessImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importing...';
+        importMsg.style.display = "none";
+        
+        try {
+            // Call the Edge Function
+            const { data, error } = await client.functions.invoke('import-members', {
+                body: { members: scannedMembersToImport }
+            });
+            
+            if (error) {
+                throw new Error(error.message || "Failed to invoke function");
+            }
+            
+            if (data && data.success) {
+                importMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully imported ${data.importedCount} members.`;
+                importMsg.className = "admin-msg success";
+                importMsg.style.display = "block";
+                importResults.style.display = "none";
+                scannedMembersToImport = [];
+                importFile.value = '';
+                
+                // Refresh list
+                loadAdminData();
+            } else {
+                throw new Error(data?.error || "Unknown error occurred during import.");
+            }
+            
+        } catch (err) {
+            console.error("Import Error:", err);
+            importMsg.textContent = "Error importing members: " + err.message;
+            importMsg.className = "admin-msg error";
+            importMsg.style.display = "block";
+        } finally {
+            btnProcessImport.disabled = false;
+            btnProcessImport.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Import All';
+        }
+    });
+}
