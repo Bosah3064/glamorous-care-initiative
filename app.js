@@ -4,6 +4,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileToggle = document.getElementById('mobileToggle');
     const navLinksContainer = document.getElementById('navLinks');
 
+    // Check for hash in URL on load
+    const initialHash = window.location.hash;
+    if (initialHash) {
+        const targetLink = document.querySelector(`.nav-link[href="${initialHash}"]`);
+        if (targetLink) {
+            // Remove active from all first
+            navLinks.forEach(nav => nav.classList.remove('active'));
+            pages.forEach(page => {
+                page.classList.remove('active');
+                page.classList.remove('fade-in');
+            });
+            
+            // Set new active
+            targetLink.classList.add('active');
+            const targetPage = document.querySelector(initialHash);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+        }
+    }
+
     // Initially trigger fade-in on the active page
     setTimeout(() => {
         const activePage = document.querySelector('.page.active');
