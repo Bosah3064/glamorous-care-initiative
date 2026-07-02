@@ -388,18 +388,23 @@ function renderPayments(payments) {
 async function loadAdminData() {
     const { data: members } = await client.from('members').select('*').order('full_name');
     allMembers = members || [];
-    renderMembersList(allMembers);
+    renderMembersList(allMembers, ""); // pass empty string to hide by default
     populateMemberDropdown(allMembers);
     setupAdminEventListeners();
 }
 
-// Render Members Directory
-function renderMembersList(members) {
+// Render Members Directory (Only show when filtered)
+function renderMembersList(members, searchTerm = "") {
     const list = document.getElementById('membersList');
     if (!list) return;
 
+    if (!searchTerm || searchTerm.trim() === "") {
+        list.innerHTML = '<p style="text-align:center;color:#9ca3af;padding: 10px;"><i class="fa-solid fa-search"></i> Type a name or email to search members...</p>';
+        return;
+    }
+
     if (members.length === 0) {
-        list.innerHTML = '<p style="text-align:center;color:#9ca3af;">No members found.</p>';
+        list.innerHTML = '<p style="text-align:center;color:#ef4444;padding: 10px;">No members found matching your search.</p>';
         return;
     }
     list.innerHTML = members.map(m => {
@@ -445,12 +450,18 @@ function setupAdminEventListeners() {
     // Member Search
     const searchInput = document.getElementById('memberSearch');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            const filtered = allMembers.filter(m =>
-                m.full_name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
+        // Remove existing listeners by replacing the element
+        const newSearch = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearch, searchInput);
+        
+        newSearch.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allMembers.filter(m => 
+                m.full_name.toLowerCase().includes(term) || 
+                (m.email && m.email.toLowerCase().includes(term)) ||
+                (m.phone && m.phone.toLowerCase().includes(term))
             );
-            renderMembersList(filtered);
+            renderMembersList(filtered, term);
         });
     }
 
