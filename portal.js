@@ -243,22 +243,13 @@ function renderFormDetails(details) {
     const phoneTxt = phoneEl ? phoneEl.textContent : 'N/A';
     const joinTxt = joinEl ? joinEl.textContent : 'N/A';
     
-    const existingHTML = `
-        <div class="detail-item">
-            <i class="fa-solid fa-phone"></i>
-            <div>
-                <small>Phone Number</small>
-                <p id="profilePhone">${phoneTxt}</p>
-            </div>
-        </div>
-        <div class="detail-item">
-            <i class="fa-solid fa-calendar"></i>
-            <div>
-                <small>Member Since</small>
-                <p id="profileJoinDate">${joinTxt}</p>
-            </div>
-        </div>
-    `;
+    // Check if we have any extra details to show
+    const extraKeys = Object.keys(details).filter(k => k !== 'date_of_birth' || details[k]);
+    const toggleBtn = document.getElementById('fullProfileToggle');
+    
+    if (extraKeys.length > 0 && toggleBtn) {
+        toggleBtn.style.display = 'block';
+    }
 
     let extraHTML = '';
     
@@ -277,7 +268,23 @@ function renderFormDetails(details) {
     for (const [key, value] of Object.entries(details)) {
         if (!value) continue;
         
+        let displayValue = value;
         const formattedKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        
+        // Format date of birth professionally (e.g., Excel date number to actual date)
+        if (key === 'date_of_birth') {
+            if (!isNaN(value)) {
+               // Assuming Excel serial date (days since 1900-01-01)
+               const excelEpoch = new Date(1899, 11, 31);
+               const dob = new Date(excelEpoch.getTime() + value * 86400000);
+               displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            } else {
+               const dob = new Date(value);
+               if (!isNaN(dob)) {
+                   displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+               }
+            }
+        }
         
         let icon = 'fa-list';
         for (const [kw, ic] of Object.entries(iconMap)) {
@@ -292,14 +299,29 @@ function renderFormDetails(details) {
                 <i class="fa-solid ${icon}"></i>
                 <div>
                     <small>${formattedKey}</small>
-                    <p>${value}</p>
+                    <p>${displayValue}</p>
                 </div>
             </div>
         `;
     }
 
-    if (profileDetailsGrid) {
-        profileDetailsGrid.innerHTML = existingHTML + extraHTML;
+    const extraGrid = document.getElementById('extraDetailsGrid');
+    if (extraGrid) {
+        extraGrid.innerHTML = extraHTML;
+    }
+}
+
+// Toggle full profile view
+window.toggleFullProfile = function() {
+    const detailsDiv = document.getElementById('fullProfileDetails');
+    const btn = document.getElementById('btnViewFullProfile');
+    
+    if (detailsDiv.style.display === 'none') {
+        detailsDiv.style.display = 'block';
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Hide Full Profile';
+    } else {
+        detailsDiv.style.display = 'none';
+        btn.innerHTML = '<i class="fa-solid fa-id-card"></i> View Full Profile';
     }
 }
 
@@ -498,7 +520,105 @@ function formatDate(dateStr) {
 }
 
 // =============================================
-// LOGOUT
+// PASSWORD UI LOGIC
+// =============================================
+
+window.togglePasswordVisibility = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        icon.style.color = 'var(--color-blue)';
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        icon.style.color = '#9ca3af';
+    }
+}
+
+// Password Strength Logic
+const newPasswordInput = document.getElementById('newPassword');
+const confirmPasswordInput = document.getElementById('confirmNewPassword');
+
+if (newPasswordInput) {
+    newPasswordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        
+        if (password.length >= 6) strength += 1;
+        if (password.length >= 10) strength += 1;
+        if (/[A-Z]/.test(password)) strength += 1;
+        if (/[0-9]/.test(password)) strength += 1;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+        
+        // Cap at 4
+        if (strength > 4) strength = 4;
+        
+        // Reset classes
+        for (let i = 1; i <= 4; i++) {
+            const bar = document.getElementById(`strengthBar${i}`);
+            if (bar) {
+                bar.className = 'strength-bar';
+                if (i <= strength) {
+                    if (strength === 1) bar.classList.add('weak');
+                    else if (strength === 2) bar.classList.add('fair');
+                    else if (strength === 3) bar.classList.add('good');
+                    else bar.classList.add('strong');
+                }
+            }
+        }
+        
+        const label = document.getElementById('strengthLabel');
+        if (label) {
+            if (password.length === 0) label.textContent = '';
+            else if (strength === 1) label.textContent = 'Weak';
+            else if (strength === 2) label.textContent = 'Fair';
+            else if (strength === 3) label.textContent = 'Good';
+            else label.textContent = 'Strong';
+            
+            if (strength <= 1 && password.length > 0) label.style.color = '#ef4444';
+            else if (strength === 2) label.style.color = '#eab308';
+            else if (strength >= 3) label.style.color = '#22c55e';
+        }
+        
+        checkPasswordMatch();
+    });
+}
+
+if (confirmPasswordInput) {
+    confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+}
+
+function checkPasswordMatch() {
+    if (!newPasswordInput || !confirmPasswordInput) return;
+    
+    const pwd1 = newPasswordInput.value;
+    const pwd2 = confirmPasswordInput.value;
+    const matchLabel = document.getElementById('passwordMatchLabel');
+    
+    if (!matchLabel) return;
+    
+    if (pwd2.length === 0) {
+        matchLabel.style.display = 'none';
+        return;
+    }
+    
+    matchLabel.style.display = 'block';
+    if (pwd1 === pwd2) {
+        matchLabel.innerHTML = '<i class="fa-solid fa-check-circle"></i> Passwords match';
+        matchLabel.style.color = '#22c55e';
+    } else {
+        matchLabel.innerHTML = '<i class="fa-solid fa-times-circle"></i> Passwords do not match';
+        matchLabel.style.color = '#ef4444';
+    }
+}
+
+// =============================================
+// DOM LOADED INIT
 // =============================================
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {

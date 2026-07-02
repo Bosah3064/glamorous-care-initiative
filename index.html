@@ -552,13 +552,34 @@
                         </div>
                         <div class="auth-error" id="resetError" style="display:none;"></div>
                         <form id="resetPasswordForm">
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label for="newPassword"><i class="fa-solid fa-lock"></i> New Password</label>
-                                <input type="password" id="newPassword" required placeholder="Min 6 characters">
+                                <div style="position: relative;">
+                                    <input type="password" id="newPassword" required placeholder="Min 6 characters" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <!-- Password Strength Meter -->
+                                <div id="passwordStrengthContainer" style="margin-top: 8px;">
+                                    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                                        <div class="strength-bar" id="strengthBar1"></div>
+                                        <div class="strength-bar" id="strengthBar2"></div>
+                                        <div class="strength-bar" id="strengthBar3"></div>
+                                        <div class="strength-bar" id="strengthBar4"></div>
+                                    </div>
+                                    <small id="strengthLabel" style="color: #9ca3af; font-size: 0.8rem;"></small>
+                                </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label for="confirmNewPassword"><i class="fa-solid fa-lock"></i> Confirm New Password</label>
-                                <input type="password" id="confirmNewPassword" required placeholder="Repeat your new password">
+                                <div style="position: relative;">
+                                    <input type="password" id="confirmNewPassword" required placeholder="Repeat your new password" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('confirmNewPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small id="passwordMatchLabel" style="display: none; font-size: 0.8rem; margin-top: 4px;"></small>
                             </div>
                             <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-shield-halved"></i> Save & Continue</button>
                         </form>
@@ -582,7 +603,6 @@
                             <button class="btn btn-logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
                         </div>
                         <div class="profile-details-grid" id="profileDetailsGrid">
-                            <!-- Dynamic details populated from JS -->
                             <div class="detail-item">
                                 <i class="fa-solid fa-phone"></i>
                                 <div>
@@ -596,6 +616,23 @@
                                     <small>Member Since</small>
                                     <p id="profileJoinDate">N/A</p>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- View Full Profile Toggle -->
+                        <div id="fullProfileToggle" style="display:none; text-align: center; margin-top: 15px;">
+                            <button id="btnViewFullProfile" onclick="toggleFullProfile()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 20px; border-radius: 25px; cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 0.9rem; transition: all 0.3s ease;">
+                                <i class="fa-solid fa-id-card"></i> View Full Profile
+                            </button>
+                        </div>
+
+                        <!-- Expandable Full Profile Details -->
+                        <div id="fullProfileDetails" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.15);">
+                            <h4 style="color: rgba(255,255,255,0.7); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">
+                                <i class="fa-solid fa-address-card"></i> Registration Details
+                            </h4>
+                            <div class="profile-details-grid" id="extraDetailsGrid">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
                     </div>

@@ -1137,9 +1137,59 @@ ul {
     box-shadow: 0 0 0 3px rgba(29, 95, 153, 0.1);
 }
 
-/* ===========================
+/* === PASSWORD RESET & SECURITY UI === */
+.password-eye-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 5px;
+    transition: color 0.3s;
+}
+
+.password-eye-btn:hover {
+    color: var(--color-blue);
+}
+
+.strength-bar {
+    height: 4px;
+    flex: 1;
+    background-color: #e5e7eb;
+    border-radius: 2px;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.strength-bar.weak { background-color: #ef4444; }
+.strength-bar.fair { background-color: #eab308; }
+.strength-bar.good { background-color: #22c55e; }
+.strength-bar.strong { background-color: #15803d; }
+
+/* === FULL PROFILE DETAILS UI === */
+#fullProfileToggle button:hover {
+    background: rgba(255,255,255,0.25) !important;
+}
+
+#extraDetailsGrid {
+    margin-top: 10px;
+}
+
+#extraDetailsGrid .detail-item {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#extraDetailsGrid .detail-item:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* =========================================
    FOOTER
-   =========================== */
+   ========================================= */
 footer {
     background: var(--color-dark);
     color: var(--color-white);
