@@ -1,6 +1,6 @@
 // =============================================
 // GLAMOROUS CARE INITIATIVE - MEMBER PORTAL
-// Supabase Integration
+// Supabase Integration — Role-Based Dashboard
 // =============================================
 
 const SUPABASE_URL = 'https://wbprrsuhkmdreuzhzmkq.supabase.co';
@@ -27,6 +27,7 @@ const profileName = document.getElementById('profileName');
 const profileEmail = document.getElementById('profileEmail');
 const profilePhone = document.getElementById('profilePhone');
 const profileStatus = document.getElementById('profileStatus');
+const profileRole = document.getElementById('profileRole');
 const profileJoinDate = document.getElementById('profileJoinDate');
 const profileAvatar = document.getElementById('profileAvatar');
 const profileDetailsGrid = document.getElementById('profileDetailsGrid');
@@ -35,10 +36,20 @@ const totalContributions = document.getElementById('totalContributions');
 const totalPayments = document.getElementById('totalPayments');
 const pendingPayments = document.getElementById('pendingPayments');
 
+// Admin Panel
+const adminPanel = document.getElementById('adminPanel');
+
 // Global state
 let currentSessionUser = null;
+let currentMember = null;
+let allMembers = [];
 
-// Login Handler
+// Admin roles that can see the admin panel
+const ADMIN_ROLES = ['admin', 'treasury', 'chairperson'];
+
+// =============================================
+// LOGIN HANDLER
+// =============================================
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -67,7 +78,9 @@ if (loginForm) {
     });
 }
 
-// Password Reset Handler
+// =============================================
+// PASSWORD RESET HANDLER
+// =============================================
 if (resetPasswordForm) {
     resetPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -113,7 +126,6 @@ if (resetPasswordForm) {
 
         if (dbError) {
             console.error('Failed to update member reset flag:', dbError);
-            // Non-critical, let them through
         }
 
         resetPasswordFormContainer.style.display = 'none';
@@ -121,9 +133,10 @@ if (resetPasswordForm) {
     });
 }
 
-// Check if user requires password reset, else load dashboard
+// =============================================
+// CHECK USER & LOAD DASHBOARD
+// =============================================
 async function checkUserAndLoadDashboard(user) {
-    // Fetch member profile to check reset flag
     const { data: member, error: memberError } = await client
         .from('members')
         .select('*')
@@ -135,7 +148,6 @@ async function checkUserAndLoadDashboard(user) {
     }
 
     if (member && member.requires_password_reset) {
-        // Show forced reset form
         loginFormContainer.style.display = 'none';
         resetPasswordFormContainer.style.display = 'block';
         loginView.style.display = 'block';
@@ -145,7 +157,9 @@ async function checkUserAndLoadDashboard(user) {
     }
 }
 
-// Load Dashboard
+// =============================================
+// LOAD DASHBOARD (role-aware)
+// =============================================
 async function loadDashboard(user, preloadedMember = null) {
     loginView.style.display = 'none';
     dashboardView.style.display = 'block';
@@ -161,6 +175,8 @@ async function loadDashboard(user, preloadedMember = null) {
         member = data;
     }
 
+    currentMember = member;
+
     if (!member) {
         profileName.textContent = user.email;
         profileEmail.textContent = user.email;
@@ -172,7 +188,6 @@ async function loadDashboard(user, preloadedMember = null) {
         profileName.textContent = member.full_name;
         profileEmail.textContent = member.email;
         
-        // Ensure static elements are updated initially
         if (profilePhone) profilePhone.textContent = member.phone || 'N/A';
         if (profileJoinDate) profileJoinDate.textContent = formatDate(member.join_date);
         
@@ -182,72 +197,87 @@ async function loadDashboard(user, preloadedMember = null) {
 
         // Status badge
         profileStatus.textContent = member.status.charAt(0).toUpperCase() + member.status.slice(1);
-        profileStatus.className = \`status-badge status-\${member.status}\`;
+        profileStatus.className = `status-badge status-${member.status}`;
 
-        // Render extra form details if they exist
+        // Role badge — show for admin roles
+        if (profileRole && member.role && member.role !== 'member') {
+            const roleLabels = {
+                'admin': '🛡️ Admin',
+                'treasury': '💰 Treasury',
+                'chairperson': '👑 Chairperson'
+            };
+            profileRole.textContent = roleLabels[member.role] || member.role;
+            profileRole.style.display = 'inline-block';
+        }
+
+        // Render extra form details
         if (member.form_details) {
             renderFormDetails(member.form_details);
         }
+
+        // ===== ROLE-BASED ADMIN PANEL =====
+        if (ADMIN_ROLES.includes(member.role) && adminPanel) {
+            adminPanel.style.display = 'block';
+            await loadAdminData();
+        }
     }
 
-    // Fetch payments
+    // Fetch payments for the current user
     const { data: payments, error: paymentsError } = await client
         .from('payments')
         .select('*')
         .eq('member_id', user.id)
         .order('payment_date', { ascending: false });
 
-    // Render payments table
     renderPayments(payments || []);
 }
 
+// =============================================
+// RENDER FORM DETAILS
+// =============================================
 function renderFormDetails(details) {
-    // Keep Phone and Joined Date which are static in HTML, but append new ones
-    // First, save the existing static HTML elements so we can restore them and append new ones
-    
     const phoneEl = document.getElementById('profilePhone');
     const joinEl = document.getElementById('profileJoinDate');
     
     const phoneTxt = phoneEl ? phoneEl.textContent : 'N/A';
     const joinTxt = joinEl ? joinEl.textContent : 'N/A';
     
-    // Instead of replacing the whole grid, we'll selectively append
-    const existingHTML = \`
+    const existingHTML = `
         <div class="detail-item">
             <i class="fa-solid fa-phone"></i>
             <div>
                 <small>Phone Number</small>
-                <p id="profilePhone">\${phoneTxt}</p>
+                <p id="profilePhone">${phoneTxt}</p>
             </div>
         </div>
         <div class="detail-item">
             <i class="fa-solid fa-calendar"></i>
             <div>
                 <small>Member Since</small>
-                <p id="profileJoinDate">\${joinTxt}</p>
+                <p id="profileJoinDate">${joinTxt}</p>
             </div>
         </div>
-    \`;
+    `;
 
     let extraHTML = '';
     
-    // Map of known form fields to icons
     const iconMap = {
         'id_number': 'fa-id-card',
         'branch': 'fa-building',
         'address': 'fa-location-dot',
         'occupation': 'fa-briefcase',
         'gender': 'fa-venus-mars',
-        'date_of_birth': 'fa-cake-candles'
+        'date_of_birth': 'fa-cake-candles',
+        'marital_status': 'fa-heart',
+        'next_of_kin': 'fa-people-arrows',
+        'dependants': 'fa-children'
     };
 
     for (const [key, value] of Object.entries(details)) {
         if (!value) continue;
         
-        // Format key from "id_number" to "ID Number"
         const formattedKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         
-        // Guess an icon based on key name, fallback to a list icon
         let icon = 'fa-list';
         for (const [kw, ic] of Object.entries(iconMap)) {
             if (key.toLowerCase().includes(kw)) {
@@ -256,15 +286,15 @@ function renderFormDetails(details) {
             }
         }
 
-        extraHTML += \`
+        extraHTML += `
             <div class="detail-item">
-                <i class="fa-solid \${icon}"></i>
+                <i class="fa-solid ${icon}"></i>
                 <div>
-                    <small>\${formattedKey}</small>
-                    <p>\${value}</p>
+                    <small>${formattedKey}</small>
+                    <p>${value}</p>
                 </div>
             </div>
-        \`;
+        `;
     }
 
     if (profileDetailsGrid) {
@@ -272,12 +302,14 @@ function renderFormDetails(details) {
     }
 }
 
-// Render Payments Table
+// =============================================
+// RENDER PAYMENTS TABLE
+// =============================================
 function renderPayments(payments) {
     if (!paymentsTableBody) return;
 
     if (payments.length === 0) {
-        paymentsTableBody.innerHTML = \`
+        paymentsTableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="empty-state">
                     <i class="fa-solid fa-receipt"></i>
@@ -285,7 +317,7 @@ function renderPayments(payments) {
                     <small>Your payments will appear here once recorded by the Treasurer.</small>
                 </td>
             </tr>
-        \`;
+        `;
         totalContributions.textContent = 'KES 0';
         totalPayments.textContent = '0';
         pendingPayments.textContent = '0';
@@ -309,39 +341,179 @@ function renderPayments(payments) {
         const statusIcon = payment.status === 'paid' ? 'fa-circle-check' :
                           payment.status === 'pending' ? 'fa-clock' : 'fa-triangle-exclamation';
 
-        return \`
+        return `
             <tr>
-                <td>\${payment.month}</td>
-                <td><strong>KES \${payment.amount.toLocaleString()}</strong></td>
-                <td>\${formatDate(payment.payment_date)}</td>
-                <td><span class="status-badge \${statusClass}"><i class="fa-solid \${statusIcon}"></i> \${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
-                <td>\${payment.reference || '—'}</td>
+                <td>${payment.month}</td>
+                <td><strong>KES ${payment.amount.toLocaleString()}</strong></td>
+                <td>${formatDate(payment.payment_date)}</td>
+                <td><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
+                <td>${payment.reference || '—'}</td>
             </tr>
-        \`;
+        `;
     }).join('');
 
-    totalContributions.textContent = \`KES \${totalPaid.toLocaleString()}\`;
+    totalContributions.textContent = `KES ${totalPaid.toLocaleString()}`;
     totalPayments.textContent = paidCount.toString();
     pendingPayments.textContent = pendingCount.toString();
 }
 
-// Format date helper
+// =============================================
+// ADMIN FUNCTIONS
+// =============================================
+
+// Load admin data (members list + dropdown)
+async function loadAdminData() {
+    const { data: members } = await client.from('members').select('*').order('full_name');
+    allMembers = members || [];
+    renderMembersList(allMembers);
+    populateMemberDropdown(allMembers);
+    setupAdminEventListeners();
+}
+
+// Render Members Directory
+function renderMembersList(members) {
+    const list = document.getElementById('membersList');
+    if (!list) return;
+
+    if (members.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:#9ca3af;">No members found.</p>';
+        return;
+    }
+    list.innerHTML = members.map(m => {
+        const roleColors = {
+            'admin': 'background: #dbeafe; color: #2563eb;',
+            'treasury': 'background: #fef3c7; color: #d97706;',
+            'chairperson': 'background: #f3e8ff; color: #7c3aed;',
+            'member': m.status === 'active' ? 'background: #dcfce7; color: #16a34a;' : 'background: #fef3c7; color: #d97706;'
+        };
+        const roleLabel = m.role === 'member' 
+            ? (m.status.charAt(0).toUpperCase() + m.status.slice(1)) 
+            : (m.role.charAt(0).toUpperCase() + m.role.slice(1));
+        const badgeStyle = roleColors[m.role] || roleColors['member'];
+        return `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; cursor: default;" onmouseover="this.style.background='#f8fafc';this.style.borderColor='var(--color-blue)'" onmouseout="this.style.background='';this.style.borderColor='#f3f4f6'">
+                <div>
+                    <div style="font-weight: 600;">${m.full_name}</div>
+                    <div style="color: #6b7280; font-size: 0.9rem;">${m.email}${m.phone ? ' • ' + m.phone : ''}</div>
+                </div>
+                <span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Populate Payment Member Dropdown
+function populateMemberDropdown(members) {
+    const select = document.getElementById('paymentMember');
+    if (!select) return;
+    select.innerHTML = '<option value="">— Choose a member —</option>';
+    members.forEach(m => {
+        select.innerHTML += `<option value="${m.id}" data-name="${m.full_name}">${m.full_name} (${m.email})</option>`;
+    });
+}
+
+// Setup admin event listeners (only once)
+let adminListenersAttached = false;
+function setupAdminEventListeners() {
+    if (adminListenersAttached) return;
+    adminListenersAttached = true;
+
+    // Member Search
+    const searchInput = document.getElementById('memberSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = allMembers.filter(m =>
+                m.full_name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
+            );
+            renderMembersList(filtered);
+        });
+    }
+
+    // Add Payment Form
+    const addPaymentForm = document.getElementById('addPaymentForm');
+    if (addPaymentForm) {
+        addPaymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgDiv = document.getElementById('paymentMsg');
+            const memberSelect = document.getElementById('paymentMember');
+            const selectedOption = memberSelect.options[memberSelect.selectedIndex];
+
+            const payment = {
+                member_id: memberSelect.value,
+                member_name: selectedOption.getAttribute('data-name'),
+                amount: parseInt(document.getElementById('paymentAmount').value),
+                month: document.getElementById('paymentMonth').value,
+                payment_date: document.getElementById('paymentDate').value,
+                status: document.getElementById('paymentStatus').value,
+                reference: document.getElementById('paymentRef').value || null,
+                added_by: currentMember ? currentMember.role : 'admin'
+            };
+
+            const { error } = await client.from('payments').insert(payment);
+
+            if (error) {
+                msgDiv.className = 'admin-msg error';
+                msgDiv.style.display = 'block';
+                msgDiv.textContent = 'Error: ' + error.message;
+            } else {
+                msgDiv.className = 'admin-msg success';
+                msgDiv.style.display = 'block';
+                msgDiv.textContent = `✅ Payment of KES ${payment.amount} for ${payment.member_name} (${payment.month}) saved successfully!`;
+                addPaymentForm.reset();
+            }
+
+            setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 5000);
+        });
+    }
+
+    // Create Member Form (Note: this requires service_role key on a backend.
+    // For now, we show a placeholder message directing to the import script.)
+    const addMemberForm = document.getElementById('addMemberForm');
+    if (addMemberForm) {
+        addMemberForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgDiv = document.getElementById('addMemberMsg');
+            
+            // Creating auth users requires the service_role key, which cannot be
+            // safely used in the browser. Show an informational message.
+            msgDiv.className = 'admin-msg error';
+            msgDiv.style.display = 'block';
+            msgDiv.textContent = 'Account creation requires server-side access. Please use the import script or contact the system administrator to add new members.';
+            
+            setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 8000);
+        });
+    }
+}
+
+// =============================================
+// HELPERS
+// =============================================
 function formatDate(dateStr) {
     if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// Logout Handler
+// =============================================
+// LOGOUT
+// =============================================
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         await client.auth.signOut();
         currentSessionUser = null;
+        currentMember = null;
         dashboardView.style.display = 'none';
         loginView.style.display = 'block';
         loginFormContainer.style.display = 'block';
         resetPasswordFormContainer.style.display = 'none';
         
+        // Hide admin panel
+        if (adminPanel) adminPanel.style.display = 'none';
+        
+        // Hide role badge
+        if (profileRole) profileRole.style.display = 'none';
+
         // Reset forms
         if (loginForm) loginForm.reset();
         if (resetPasswordForm) resetPasswordForm.reset();
@@ -352,7 +524,9 @@ if (logoutBtn) {
     });
 }
 
-// Check if user is already logged in on page load
+// =============================================
+// AUTH CHECK ON PAGE LOAD
+// =============================================
 async function checkAuth() {
     const { data: { session } } = await client.auth.getSession();
     if (session) {
@@ -361,9 +535,7 @@ async function checkAuth() {
     }
 }
 
-// Run auth check when portal page becomes visible
 document.addEventListener('DOMContentLoaded', () => {
-    // Watch for portal section becoming active
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.target.id === 'portal' && mutation.target.classList.contains('active')) {
@@ -377,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(portalSection, { attributes: true, attributeFilter: ['class'] });
     }
 
-    // Also check on initial load if portal is active
     if (portalSection && portalSection.classList.contains('active')) {
         checkAuth();
     }

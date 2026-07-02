@@ -574,6 +574,7 @@
                                 <h3 id="profileName">Member Name</h3>
                                 <p class="profile-subtitle" id="profileEmail">email@example.com</p>
                                 <span class="status-badge status-active" id="profileStatus">Active</span>
+                                <span class="status-badge" id="profileRole" style="display:none; background: #dbeafe; color: #2563eb;"></span>
                             </div>
                             <button class="btn btn-logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
                         </div>
@@ -648,6 +649,120 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- ============================================ -->
+                <!-- ADMIN PANEL — Only visible for admin roles   -->
+                <!-- ============================================ -->
+                <div id="adminPanel" style="display:none;">
+
+                    <!-- Admin Section Header -->
+                    <div class="admin-section-header" style="margin-top: 35px; margin-bottom: 25px; padding: 20px 25px; background: linear-gradient(135deg, var(--color-blue), var(--color-purple)); border-radius: 15px; color: white;">
+                        <h3 style="margin: 0; font-size: 1.3rem;"><i class="fa-solid fa-shield-halved"></i> Administration Panel</h3>
+                        <p style="margin: 5px 0 0; opacity: 0.85; font-size: 0.9rem;">Manage members and payment records</p>
+                    </div>
+
+                    <!-- Create Member Account -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-user-plus"></i> Create Member Account</h3>
+                        <div class="admin-msg" id="addMemberMsg"></div>
+                        <form id="addMemberForm" class="admin-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="newMemberName" required placeholder="John Doe">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="newMemberEmail" required placeholder="john@example.com">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="newMemberPhone" placeholder="0712345678">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select id="newMemberRole">
+                                        <option value="member">Member</option>
+                                        <option value="treasury">Treasury</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="chairperson">Chairperson</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>ID Number (Optional)</label>
+                                    <input type="text" id="newMemberId" placeholder="e.g. 12345678">
+                                </div>
+                                <div class="form-group">
+                                    <label>Branch (Optional)</label>
+                                    <input type="text" id="newMemberBranch" placeholder="e.g. Nairobi">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="btnCreateMember"><i class="fa-solid fa-user-plus"></i> Create Account</button>
+                        </form>
+                        <p style="font-size: 0.85rem; color: #6b7280; margin-top: 10px;">New accounts will be created with the default password <strong>12345678</strong> and will be prompted to reset it on first login.</p>
+                    </div>
+
+                    <!-- Add Payment -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-plus-circle"></i> Add Payment Record</h3>
+                        <div class="admin-msg" id="paymentMsg"></div>
+                        <form id="addPaymentForm" class="admin-form">
+                            <div class="form-group">
+                                <label>Select Member</label>
+                                <select id="paymentMember" required>
+                                    <option value="">— Choose a member —</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Amount (KES)</label>
+                                    <input type="number" id="paymentAmount" required placeholder="200" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Month</label>
+                                    <input type="text" id="paymentMonth" required placeholder="e.g., July 2026">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Payment Date</label>
+                                    <input type="date" id="paymentDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="paymentStatus">
+                                        <option value="paid">Paid</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="overdue">Overdue</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Reference (MPESA code, etc.)</label>
+                                <input type="text" id="paymentRef" placeholder="e.g., QHL7K2BXYZ">
+                            </div>
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Payment</button>
+                        </form>
+                    </div>
+
+                    <!-- All Members Directory -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-users"></i> All Members</h3>
+                        <div class="search-box" style="position: relative; margin-bottom: 15px;">
+                            <i class="fa-solid fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af;"></i>
+                            <input type="text" id="memberSearch" placeholder="Search by name or email..." style="padding-left: 40px; width: 100%; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem; font-family: 'Outfit', sans-serif; box-sizing: border-box;">
+                        </div>
+                        <div class="members-list" id="membersList">
+                            <p style="text-align: center; color: #9ca3af;">Loading members...</p>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END ADMIN PANEL -->
             </div>
         </section>
     </main>
@@ -685,6 +800,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=1.2"></script>
-    <script src="portal.js?v=1.0"></script>
+    <script src="portal.js?v=2.0"></script>
 </body>
 </html>
