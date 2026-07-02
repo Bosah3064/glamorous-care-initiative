@@ -446,14 +446,24 @@ function renderMembersList(members, searchTerm = "") {
     }).join('');
 }
 
-// Populate Payment Member Dropdown
+// Populate Payment Member Dropdowns
 function populateMemberDropdown(members) {
     const select = document.getElementById('paymentMember');
-    if (!select) return;
-    select.innerHTML = '<option value="">— Choose a member —</option>';
-    members.forEach(m => {
-        select.innerHTML += `<option value="${m.id}" data-name="${m.full_name}">${m.full_name} (${m.email})</option>`;
-    });
+    const selectView = document.getElementById('viewPaymentsMember');
+    
+    if (select) {
+        select.innerHTML = '<option value="">— Choose a member —</option>';
+        members.forEach(m => {
+            select.innerHTML += `<option value="${m.id}" data-name="${m.full_name}">${m.full_name} (${m.email})</option>`;
+        });
+    }
+    
+    if (selectView) {
+        selectView.innerHTML = '<option value="">— Select a member —</option>';
+        members.forEach(m => {
+            selectView.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
+        });
+    }
 }
 
 // Setup admin event listeners (only once)
@@ -1213,3 +1223,81 @@ if (btnProcessImport) {
         }
     });
 }
+
+// =============================================
+// ADMIN: VIEW MEMBER PAYMENTS
+// =============================================
+window.loadMemberPaymentsAdmin = async function(memberId) {
+    const section = document.getElementById('adminMemberPaymentsSection');
+    const tbody = document.getElementById('adminMemberPaymentsBody');
+    const totalPaidEl = document.getElementById('adminMemberTotalPaid');
+    const totalPendingEl = document.getElementById('adminMemberTotalPending');
+    
+    if (!memberId) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Loading payments...</td></tr>';
+    
+    try {
+        const { data: payments, error } = await client
+            .from('payments')
+            .select('*')
+            .eq('member_id', memberId)
+            .order('payment_date', { ascending: false });
+            
+        if (error) throw error;
+        
+        let totalPaid = 0;
+        let totalPending = 0;
+        
+        if (!payments || payments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="text-align:center; padding: 20px;"><p style="color:#6b7280; margin:0;">No payment records found for this member.</p></td></tr>';
+        } else {
+            // Make sure these payments are also accessible for the edit modal
+            window.allPayments = window.allPayments || [];
+            payments.forEach(p => {
+                if (!window.allPayments.find(existing => existing.id === p.id)) {
+                    window.allPayments.push(p);
+                }
+            });
+
+            tbody.innerHTML = payments.map(p => {
+                let statusBadge = '';
+                if (p.status === 'paid') {
+                    statusBadge = '<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">Paid</span>';
+                    totalPaid += parseFloat(p.amount) || 0;
+                } else if (p.status === 'pending') {
+                    statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">Pending</span>';
+                    totalPending += parseFloat(p.amount) || 0;
+                } else {
+                    statusBadge = '<span style="background:#fee2e2; color:#b91c1c; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">Overdue</span>';
+                }
+                
+                return `
+                    <tr>
+                        <td><strong>${p.month}</strong></td>
+                        <td>KES ${p.amount.toLocaleString()}</td>
+                        <td>${new Date(p.payment_date).toLocaleDateString()}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-family:monospace; color:#6b7280;">${p.reference || '-'}</td>
+                        <td>
+                            <button onclick="openEditPaymentModal('${p.id}')" style="background:var(--color-purple); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        totalPaidEl.textContent = `KES ${totalPaid.toLocaleString()}`;
+        totalPendingEl.textContent = `KES ${totalPending.toLocaleString()}`;
+        
+    } catch (err) {
+        console.error("Error loading member payments:", err);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error loading payments: ${err.message}</td></tr>`;
+    }
+};
