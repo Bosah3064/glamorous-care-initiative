@@ -330,8 +330,10 @@ window.toggleFullProfile = function() {
 // =============================================
 function renderPayments(payments) {
     if (!paymentsTableBody) return;
+    paymentsTableBody.innerHTML = '';
+    window.allPayments = []; // Reset stored payments
 
-    if (payments.length === 0) {
+    if (!payments || payments.length === 0) {
         paymentsTableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="empty-state">
@@ -364,6 +366,15 @@ function renderPayments(payments) {
         const statusIcon = payment.status === 'paid' ? 'fa-circle-check' :
                           payment.status === 'pending' ? 'fa-clock' : 'fa-triangle-exclamation';
 
+        // Store the payment globally for the edit modal
+        window.allPayments = window.allPayments || [];
+        if (!window.allPayments.find(p => p.id === payment.id)) {
+            window.allPayments.push(payment);
+        }
+
+        const isAdmin = ADMIN_ROLES.includes(currentMember?.role);
+        const editBtn = isAdmin ? `<button onclick="openEditPaymentModal('${payment.id}')" style="background: none; border: none; color: var(--color-blue); cursor: pointer; font-size: 0.9rem;" title="Edit Payment"><i class="fa-solid fa-pen-to-square"></i></button>` : '';
+
         return `
             <tr>
                 <td>${payment.month}</td>
@@ -371,6 +382,7 @@ function renderPayments(payments) {
                 <td>${formatDate(payment.payment_date)}</td>
                 <td><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
                 <td>${payment.reference || '—'}</td>
+                ${isAdmin ? `<td>${editBtn}</td>` : ''}
             </tr>
         `;
     }).join('');
@@ -421,11 +433,14 @@ function renderMembersList(members, searchTerm = "") {
         const badgeStyle = roleColors[m.role] || roleColors['member'];
         return `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; cursor: default;" onmouseover="this.style.background='#f8fafc';this.style.borderColor='var(--color-blue)'" onmouseout="this.style.background='';this.style.borderColor='#f3f4f6'">
-                <div>
+                <div style="flex: 1;">
                     <div style="font-weight: 600;">${m.full_name}</div>
                     <div style="color: #6b7280; font-size: 0.9rem;">${m.email}${m.phone ? ' • ' + m.phone : ''}</div>
                 </div>
-                <span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>
+                    <button onclick="openEditMemberModal('${m.id}')" style="background: var(--color-blue); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-pen"></i> Edit</button>
+                </div>
             </div>
         `;
     }).join('');
@@ -706,3 +721,255 @@ document.addEventListener('DOMContentLoaded', () => {
         checkAuth();
     }
 });
+
+// =============================================
+// NATIVE REGISTRATION LOGIC
+// =============================================
+const nativeRegForm = document.getElementById('nativeRegForm');
+if (nativeRegForm) {
+    nativeRegForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('regSubmitBtn');
+        const errDiv = document.getElementById('regError');
+        const succDiv = document.getElementById('regSuccess');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registering...';
+        errDiv.style.display = 'none';
+        succDiv.style.display = 'none';
+
+        const pwd1 = document.getElementById('regPassword').value;
+        const pwd2 = document.getElementById('regConfirmPassword').value;
+        if (pwd1 !== pwd2) {
+            errDiv.textContent = "Passwords do not match.";
+            errDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Complete Registration';
+            return;
+        }
+
+        const email = document.getElementById('regEmail').value;
+        const fullName = document.getElementById('regFullName').value;
+        
+        // 1. Create Auth User
+        const { data: authData, error: authError } = await client.auth.signUp({
+            email: email,
+            password: pwd1,
+            options: {
+                data: { full_name: fullName }
+            }
+        });
+
+        if (authError) {
+            errDiv.textContent = authError.message;
+            errDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Complete Registration';
+            return;
+        }
+
+        const userId = authData.user.id;
+
+        // 2. Build form details JSON
+        const formDetails = {
+            gender: document.getElementById('regGender').value,
+            date_of_birth: document.getElementById('regDob').value,
+            marital_status: document.getElementById('regMarital').value,
+            id_number: document.getElementById('regIdNumber').value,
+            branch: document.getElementById('regBranch').value,
+            occupation: document.getElementById('regOccupation').value,
+            next_of_kin_name: document.getElementById('regNokName').value,
+            next_of_kin_phone: document.getElementById('regNokPhone').value,
+            dependants: document.getElementById('regDependants').value,
+            dependant_count: document.getElementById('regDependantCount').value
+        };
+
+        // 3. Insert into members table
+        const { error: dbError } = await client.from('members').insert({
+            id: userId,
+            full_name: fullName,
+            email: email,
+            phone: document.getElementById('regPhone').value,
+            role: 'member',
+            status: 'active',
+            requires_password_reset: false,
+            form_details: formDetails
+        });
+
+        if (dbError) {
+            errDiv.textContent = "Account created but failed to save details: " + dbError.message;
+            errDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Complete Registration';
+            return;
+        }
+
+        succDiv.style.display = 'block';
+        nativeRegForm.reset();
+        
+        // Redirect to portal after 2 seconds
+        setTimeout(() => {
+            window.location.hash = '#portal';
+            location.reload();
+        }, 2000);
+    });
+}
+
+// =============================================
+// MODAL & EDIT LOGIC (ADMIN)
+// =============================================
+
+// Helper: Populate Months Dropdown
+function populateMonthDropdowns() {
+    const selects = [document.getElementById('paymentMonth'), document.getElementById('editPaymentMonth')];
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    
+    // Generate months from 1 year ago to 1 year ahead
+    let optionsHTML = '';
+    for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+        for (let m = 0; m < 12; m++) {
+            const val = `${months[m]} ${y}`;
+            const selected = (y === currentYear && m === currentMonth) ? 'selected' : '';
+            optionsHTML += `<option value="${val}" ${selected}>${val}</option>`;
+        }
+    }
+    
+    selects.forEach(sel => {
+        if (sel) {
+            sel.innerHTML = '<option value="">— Select Month —</option>' + optionsHTML;
+        }
+    });
+}
+populateMonthDropdowns();
+
+// EDIT MEMBER
+window.openEditMemberModal = function(id) {
+    const member = allMembers.find(m => m.id === id);
+    if (!member) return;
+    
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.full_name;
+    document.getElementById('editMemberEmail').value = member.email;
+    document.getElementById('editMemberPhone').value = member.phone || '';
+    document.getElementById('editMemberRole').value = member.role;
+    document.getElementById('editMemberStatus').value = member.status;
+    
+    const fd = member.form_details || {};
+    document.getElementById('editMemberDob').value = fd.date_of_birth || '';
+    document.getElementById('editMemberGender').value = fd.gender || '';
+    document.getElementById('editMemberMarital').value = fd.marital_status || '';
+    document.getElementById('editMemberIdNumber').value = fd.id_number || '';
+    document.getElementById('editMemberNokName').value = fd.next_of_kin_name || '';
+    document.getElementById('editMemberNokPhone').value = fd.next_of_kin_phone || '';
+    
+    document.getElementById('editMemberMsg').style.display = 'none';
+    document.getElementById('editMemberModal').style.display = 'flex';
+};
+
+const editMemberForm = document.getElementById('editMemberForm');
+if (editMemberForm) {
+    editMemberForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = editMemberForm.querySelector('button[type="submit"]');
+        const msg = document.getElementById('editMemberMsg');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        
+        const memberId = document.getElementById('editMemberId').value;
+        const currentMemberData = allMembers.find(m => m.id === memberId);
+        const formDetails = currentMemberData ? (currentMemberData.form_details || {}) : {};
+        
+        formDetails.date_of_birth = document.getElementById('editMemberDob').value;
+        formDetails.gender = document.getElementById('editMemberGender').value;
+        formDetails.marital_status = document.getElementById('editMemberMarital').value;
+        formDetails.id_number = document.getElementById('editMemberIdNumber').value;
+        formDetails.next_of_kin_name = document.getElementById('editMemberNokName').value;
+        formDetails.next_of_kin_phone = document.getElementById('editMemberNokPhone').value;
+        
+        const updates = {
+            full_name: document.getElementById('editMemberName').value,
+            email: document.getElementById('editMemberEmail').value,
+            phone: document.getElementById('editMemberPhone').value,
+            role: document.getElementById('editMemberRole').value,
+            status: document.getElementById('editMemberStatus').value,
+            form_details: formDetails
+        };
+        
+        const { error } = await client.from('members').update(updates).eq('id', memberId);
+        
+        if (error) {
+            msg.textContent = error.message;
+            msg.style.display = 'block';
+            msg.className = 'auth-error';
+        } else {
+            document.getElementById('editMemberModal').style.display = 'none';
+            // Refresh list
+            loadAdminData();
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Changes';
+    });
+}
+
+// EDIT PAYMENT
+window.openEditPaymentModal = function(id) {
+    const payment = window.allPayments.find(p => p.id === id);
+    if (!payment) return;
+    
+    document.getElementById('editPaymentId').value = payment.id;
+    document.getElementById('editPaymentMemberName').value = payment.member_name;
+    document.getElementById('editPaymentAmount').value = payment.amount;
+    document.getElementById('editPaymentMonth').value = payment.month;
+    
+    // Format date for input[type="date"]
+    let dateStr = '';
+    if (payment.payment_date) {
+        const d = new Date(payment.payment_date);
+        dateStr = d.toISOString().split('T')[0];
+    }
+    document.getElementById('editPaymentDate').value = dateStr;
+    document.getElementById('editPaymentStatus').value = payment.status;
+    document.getElementById('editPaymentRef').value = payment.reference || '';
+    
+    document.getElementById('editPaymentMsg').style.display = 'none';
+    document.getElementById('editPaymentModal').style.display = 'flex';
+};
+
+const editPaymentForm = document.getElementById('editPaymentForm');
+if (editPaymentForm) {
+    editPaymentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = editPaymentForm.querySelector('button[type="submit"]');
+        const msg = document.getElementById('editPaymentMsg');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        
+        const paymentId = document.getElementById('editPaymentId').value;
+        const updates = {
+            amount: document.getElementById('editPaymentAmount').value,
+            month: document.getElementById('editPaymentMonth').value,
+            payment_date: document.getElementById('editPaymentDate').value,
+            status: document.getElementById('editPaymentStatus').value,
+            reference: document.getElementById('editPaymentRef').value
+        };
+        
+        const { error } = await client.from('payments').update(updates).eq('id', paymentId);
+        
+        if (error) {
+            msg.textContent = error.message;
+            msg.style.display = 'block';
+            msg.className = 'auth-error';
+        } else {
+            document.getElementById('editPaymentModal').style.display = 'none';
+            // Refresh payments list for current user
+            checkUserAndLoadDashboard(currentSessionUser);
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Payment Update';
+    });
+}

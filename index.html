@@ -349,16 +349,123 @@
                 <p>Fill out the form below to initiate your membership application or submit your details.</p>
             </div>
             <div class="container">
-                <div class="form-container" style="background: var(--color-white); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 20px; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
-                    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfLaRR9EHKO2LT1kxtF8MHI6PuhpeVKNsE-KGnvYvBbpgha-w/viewform?embedded=true" width="100%" height="1751" frameborder="0" marginheight="0" marginwidth="0" style="max-width: 640px;">Loading…</iframe>
-                    
-                    <!-- Fallback link for mobile/embedded browsers -->
-                    <div style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 20px; width: 100%; max-width: 640px;">
-                        <p style="margin-bottom: 15px; color: #666; font-size: 0.95rem;">Having trouble viewing or submitting the form?</p>
-                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfLaRR9EHKO2LT1kxtF8MHI6PuhpeVKNsE-KGnvYvBbpgha-w/viewform" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-block;">
-                            <i class="fa-solid fa-arrow-up-right-from-square" style="margin-right: 8px;"></i> Open Form in New Tab
-                        </a>
+                <div class="form-container" style="background: var(--color-white); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 30px; max-width: 800px; margin: 0 auto;">
+                    <div class="auth-error" id="regError" style="display:none; margin-bottom: 20px;"></div>
+                    <div class="auth-success" id="regSuccess" style="display:none; margin-bottom: 20px; background: #dcfce7; color: #16a34a; padding: 15px; border-radius: 10px; border-left: 4px solid #16a34a;">
+                        <i class="fa-solid fa-check-circle"></i> Registration successful! You are being redirected to your portal...
                     </div>
+                    
+                    <form id="nativeRegForm" class="registration-form">
+                        <h3 style="margin-bottom: 20px; color: var(--color-dark); border-bottom: 2px solid var(--color-blue); padding-bottom: 10px; display: inline-block;">Personal Details</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label for="regFullName">Full Name *</label>
+                                <input type="text" id="regFullName" required placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label for="regEmail">Email Address *</label>
+                                <input type="email" id="regEmail" required placeholder="you@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="regPhone">Phone Number *</label>
+                                <input type="tel" id="regPhone" required placeholder="e.g., 0712345678">
+                            </div>
+                            <div class="form-group">
+                                <label for="regDob">Date of Birth *</label>
+                                <input type="date" id="regDob" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="regGender">Gender *</label>
+                                <select id="regGender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="regMarital">Marital Status *</label>
+                                <select id="regMarital" required>
+                                    <option value="">Select Status</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Divorced">Divorced</option>
+                                    <option value="Widowed">Widowed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 30px; margin-bottom: 20px; color: var(--color-dark); border-bottom: 2px solid var(--color-blue); padding-bottom: 10px; display: inline-block;">Additional Information</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label for="regIdNumber">National ID Number</label>
+                                <input type="text" id="regIdNumber" placeholder="Your ID Number">
+                            </div>
+                            <div class="form-group">
+                                <label for="regBranch">Branch (if any)</label>
+                                <input type="text" id="regBranch" placeholder="e.g., Nairobi Branch">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label for="regOccupation">Occupation / Skill</label>
+                                <input type="text" id="regOccupation" placeholder="What is your profession or skill?">
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 30px; margin-bottom: 20px; color: var(--color-dark); border-bottom: 2px solid var(--color-blue); padding-bottom: 10px; display: inline-block;">Family Details</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label for="regNokName">Next of Kin Full Name *</label>
+                                <input type="text" id="regNokName" required placeholder="Name of Next of Kin">
+                            </div>
+                            <div class="form-group">
+                                <label for="regNokPhone">Next of Kin Phone Number *</label>
+                                <input type="tel" id="regNokPhone" required placeholder="Phone of Next of Kin">
+                            </div>
+                            <div class="form-group">
+                                <label for="regDependants">Do you have dependants? *</label>
+                                <select id="regDependants" required onchange="document.getElementById('dependantCountDiv').style.display = this.value === 'Yes' ? 'block' : 'none'">
+                                    <option value="">Select...</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="dependantCountDiv" style="display: none;">
+                                <label for="regDependantCount">How many dependants?</label>
+                                <input type="number" id="regDependantCount" min="1" placeholder="e.g. 2">
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 30px; margin-bottom: 20px; color: var(--color-dark); border-bottom: 2px solid var(--color-blue); padding-bottom: 10px; display: inline-block;">Account Security</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group" style="position: relative;">
+                                <label for="regPassword">Create Password *</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="regPassword" required placeholder="Min 6 characters" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="position: relative;">
+                                <label for="regConfirmPassword">Confirm Password *</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="regConfirmPassword" required placeholder="Repeat password" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('regConfirmPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 30px; text-align: center;">
+                            <button type="submit" class="btn btn-primary" style="padding: 15px 40px; font-size: 1.1rem; width: 100%; max-width: 300px;" id="regSubmitBtn">
+                                <i class="fa-solid fa-user-plus"></i> Complete Registration
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </section>
@@ -765,7 +872,10 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Month</label>
-                                    <input type="text" id="paymentMonth" required placeholder="e.g., July 2026">
+                                    <select id="paymentMonth" required>
+                                        <option value="">— Select Month —</option>
+                                        <!-- Populated by JS -->
+                                    </select>
                                 </div>
                             </div>
                             <div class="form-row">
@@ -804,6 +914,154 @@
 
                 </div>
                 <!-- END ADMIN PANEL -->
+
+                <!-- EDIT MEMBER MODAL -->
+                <div id="editMemberModal" class="modal-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                    <div class="modal-content" style="background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative;">
+                        <button onclick="document.getElementById('editMemberModal').style.display='none'" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: var(--color-blue); border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-user-pen"></i> Edit Member</h3>
+                        <div class="auth-error" id="editMemberMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="editMemberForm" class="admin-form">
+                            <input type="hidden" id="editMemberId">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="editMemberName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="editMemberEmail" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="editMemberPhone">
+                                </div>
+                                <div class="form-group">
+                                    <label>System Role</label>
+                                    <select id="editMemberRole">
+                                        <option value="member">Member</option>
+                                        <option value="treasury">Treasury</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="chairperson">Chairperson</option>
+                                        <option value="vice_chairperson">Vice Chairperson</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Date of Birth</label>
+                                    <input type="date" id="editMemberDob">
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <select id="editMemberGender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Marital Status</label>
+                                    <select id="editMemberMarital">
+                                        <option value="">Select Status</option>
+                                        <option value="Single">Single</option>
+                                        <option value="Married">Married</option>
+                                        <option value="Divorced">Divorced</option>
+                                        <option value="Widowed">Widowed</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>ID Number</label>
+                                    <input type="text" id="editMemberIdNumber">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Next of Kin Name</label>
+                                    <input type="text" id="editMemberNokName">
+                                </div>
+                                <div class="form-group">
+                                    <label>Next of Kin Phone</label>
+                                    <input type="tel" id="editMemberNokPhone">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="editMemberStatus">
+                                        <option value="active">Active</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100" style="margin-top: 15px;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- EDIT PAYMENT MODAL -->
+                <div id="editPaymentModal" class="modal-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                    <div class="modal-content" style="background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 500px; position: relative;">
+                        <button onclick="document.getElementById('editPaymentModal').style.display='none'" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: var(--color-blue); border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-pen-to-square"></i> Edit Payment</h3>
+                        <div class="auth-error" id="editPaymentMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="editPaymentForm" class="admin-form">
+                            <input type="hidden" id="editPaymentId">
+                            
+                            <div class="form-group">
+                                <label>Member Name</label>
+                                <input type="text" id="editPaymentMemberName" disabled style="background: #f3f4f6;">
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Amount (KES)</label>
+                                    <input type="number" id="editPaymentAmount" required min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Month</label>
+                                    <select id="editPaymentMonth" required>
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Payment Date</label>
+                                    <input type="date" id="editPaymentDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="editPaymentStatus">
+                                        <option value="paid">Paid</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="overdue">Overdue</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Reference</label>
+                                <input type="text" id="editPaymentRef">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100" style="margin-top: 15px;"><i class="fa-solid fa-save"></i> Save Payment Update</button>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </section>
     </main>
