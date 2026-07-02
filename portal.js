@@ -537,7 +537,27 @@ async function checkAuth() {
     }
 }
 
+// Fetch total members for home page
+async function fetchMemberCount() {
+    const countEl = document.getElementById('liveMemberCount');
+    if (!countEl) return;
+    
+    countEl.style.display = 'block';
+    
+    // Call the secure database function to get the count without exposing member data
+    const { data: count, error } = await client.rpc('get_member_count');
+        
+    if (!error && count !== null) {
+        countEl.innerHTML = `🎉 ${count} Happy Members!`;
+    } else {
+        countEl.style.display = 'none'; // hide if failed
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Fetch member count for home page
+    fetchMemberCount();
+
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.target.id === 'portal' && mutation.target.classList.contains('active')) {
