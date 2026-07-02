@@ -196,7 +196,7 @@ async function loadDashboard(user, preloadedMember = null) {
         profileAvatar.textContent = initials;
 
         // Status badge
-        profileStatus.textContent = member.status === 'approved' ? 'Registered' : (member.status.charAt(0).toUpperCase() + member.status.slice(1));
+        profileStatus.textContent = (member.status === 'approved' || member.status === 'active') ? 'Registered' : (member.status.charAt(0).toUpperCase() + member.status.slice(1));
         profileStatus.className = `status-badge status-${member.status}`;
 
         // Role badge — show for admin roles
@@ -453,7 +453,7 @@ function renderMembersList(members, searchTerm = "") {
         };
         
         const statusBadgeStyle = (m.status === 'active' || m.status === 'approved') ? 'background: #dcfce7; color: #16a34a;' : 'background: #fef3c7; color: #d97706;';
-        const statusLabel = m.status === 'approved' ? 'Registered' : (m.status.charAt(0).toUpperCase() + m.status.slice(1));
+        const statusLabel = (m.status === 'approved' || m.status === 'active') ? 'Registered' : (m.status.charAt(0).toUpperCase() + m.status.slice(1));
         const statusSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${statusBadgeStyle}">${statusLabel}</span>`;
         
         let roleSpan = '';
@@ -1246,7 +1246,7 @@ if (btnProcessImport) {
                     full_name: m.full_name,
                     email: m.email,
                     phone: m.phone || null,
-                    status: 'approved',
+                    status: 'active',
                     role: 'member',
                     form_details: m.form_details || {},
                     join_date: new Date().toISOString().split('T')[0]
