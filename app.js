@@ -4,12 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileToggle = document.getElementById('mobileToggle');
     const navLinksContainer = document.getElementById('navLinks');
 
-    // Check for hash in URL on load
-    const initialHash = window.location.hash;
-    if (initialHash) {
-        const targetLink = document.querySelector(`.nav-link[href="${initialHash}"]`);
-        if (targetLink) {
-            // Remove active from all first
+    // Function to handle navigation
+    function navigateTo(hash) {
+        if (!hash || hash === '#') hash = '#home'; // Default to home
+        
+        const targetLink = document.querySelector(`.nav-link[href="${hash}"]`);
+        const targetPage = document.querySelector(hash);
+        
+        if (targetPage && targetPage.classList.contains('page')) {
+            // Remove active from all
             navLinks.forEach(nav => nav.classList.remove('active'));
             pages.forEach(page => {
                 page.classList.remove('active');
@@ -17,21 +20,35 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Set new active
-            targetLink.classList.add('active');
-            const targetPage = document.querySelector(initialHash);
-            if (targetPage) {
-                targetPage.classList.add('active');
-            }
+            if (targetLink) targetLink.classList.add('active');
+            targetPage.classList.add('active');
+            
+            // Trigger fade in
+            setTimeout(() => {
+                targetPage.classList.add('fade-in');
+            }, 50);
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            return true;
         }
+        return false;
     }
 
-    // Initially trigger fade-in on the active page
-    setTimeout(() => {
-        const activePage = document.querySelector('.page.active');
-        if (activePage) activePage.classList.add('fade-in');
-    }, 100);
+    // Check for hash in URL on load
+    if (window.location.hash) {
+        navigateTo(window.location.hash);
+    } else {
+        navigateTo('#home'); // Force home initialization
+    }
 
-    // Navigation logic
+    // Handle back/forward browser buttons
+    window.addEventListener('hashchange', () => {
+        navigateTo(window.location.hash);
+    });
+
+    // Navigation logic (Clicks)
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             const href = link.getAttribute('href');
@@ -39,37 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Allow default behavior for external links if any
             if (!href.startsWith('#')) return;
             
-            e.preventDefault();
-            
-            const targetId = href.substring(1);
-            const targetPage = document.getElementById(targetId);
-            
-            if (targetPage) {
-                // Update active link
-                navLinks.forEach(nav => nav.classList.remove('active'));
-                link.classList.add('active');
-
+            if (navigateTo(href)) {
+                e.preventDefault();
+                // Update URL manually without triggering hashchange jump
+                history.pushState(null, null, href);
+                
                 // Close mobile menu if open
-                navLinksContainer.classList.remove('active');
-
-                // Transition out current page
-                const currentPage = document.querySelector('.page.active');
-                if (currentPage && currentPage !== targetPage) {
-                    currentPage.classList.remove('fade-in');
-                    
-                    setTimeout(() => {
-                        currentPage.classList.remove('active');
-                        targetPage.classList.add('active');
-                        
-                        // Trigger reflow
-                        void targetPage.offsetWidth;
-                        
-                        targetPage.classList.add('fade-in');
-                        window.scrollTo({
-                            top: 0,
-                            behavior: 'smooth'
-                        });
-                    }, 300); // Wait for transition out
+                if (navLinksContainer.classList.contains('active')) {
+                    navLinksContainer.classList.remove('active');
                 }
             }
         });
@@ -88,10 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             const href = link.getAttribute('href');
             if (href && href.startsWith('#')) {
-                e.preventDefault();
-                const targetLink = document.querySelector(`.nav-link[href="${href}"]`);
-                if (targetLink) {
-                    targetLink.click();
+                if (navigateTo(href)) {
+                    e.preventDefault();
+                    history.pushState(null, null, href);
                 }
             }
         });
