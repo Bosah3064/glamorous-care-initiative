@@ -196,7 +196,7 @@ async function loadDashboard(user, preloadedMember = null) {
         profileAvatar.textContent = initials;
 
         // Status badge
-        profileStatus.textContent = member.status.charAt(0).toUpperCase() + member.status.slice(1);
+        profileStatus.textContent = member.status === 'approved' ? 'Registered' : (member.status.charAt(0).toUpperCase() + member.status.slice(1));
         profileStatus.className = `status-badge status-${member.status}`;
 
         // Role badge — show for admin roles
@@ -209,6 +209,8 @@ async function loadDashboard(user, preloadedMember = null) {
             };
             profileRole.textContent = roleLabels[member.role] || member.role;
             profileRole.style.display = 'inline-block';
+        } else if (profileRole) {
+            profileRole.style.display = 'none';
         }
 
         // Render extra form details
@@ -424,22 +426,30 @@ function renderMembersList(members, searchTerm = "") {
             'admin': 'background: #dbeafe; color: #2563eb;',
             'treasury': 'background: #fef3c7; color: #d97706;',
             'chairperson': 'background: #f3e8ff; color: #7c3aed;',
-            'vice_chairperson': 'background: #e0e7ff; color: #4f46e5;',
-            'member': m.status === 'active' ? 'background: #dcfce7; color: #16a34a;' : 'background: #fef3c7; color: #d97706;'
+            'vice_chairperson': 'background: #e0e7ff; color: #4f46e5;'
         };
-        const roleLabel = m.role === 'member' 
-            ? (m.status.charAt(0).toUpperCase() + m.status.slice(1)) 
-            : (m.role === 'vice_chairperson' ? 'Vice Chairperson' : m.role.charAt(0).toUpperCase() + m.role.slice(1));
-        const badgeStyle = roleColors[m.role] || roleColors['member'];
+        
+        const statusBadgeStyle = (m.status === 'active' || m.status === 'approved') ? 'background: #dcfce7; color: #16a34a;' : 'background: #fef3c7; color: #d97706;';
+        const statusLabel = m.status === 'approved' ? 'Registered' : (m.status.charAt(0).toUpperCase() + m.status.slice(1));
+        const statusSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${statusBadgeStyle}">${statusLabel}</span>`;
+        
+        let roleSpan = '';
+        if (m.role && m.role !== 'member') {
+            const badgeStyle = roleColors[m.role] || roleColors['admin'];
+            const roleLabel = m.role === 'vice_chairperson' ? 'Vice Chairperson' : m.role.charAt(0).toUpperCase() + m.role.slice(1);
+            roleSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>`;
+        }
+
         return `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; cursor: default;" onmouseover="this.style.background='#f8fafc';this.style.borderColor='var(--color-blue)'" onmouseout="this.style.background='';this.style.borderColor='#f3f4f6'">
                 <div style="flex: 1;">
                     <div style="font-weight: 600;">${m.full_name}</div>
                     <div style="color: #6b7280; font-size: 0.9rem;">${m.email}${m.phone ? ' • ' + m.phone : ''}</div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>
-                    <button onclick="openEditMemberModal('${m.id}')" style="background: var(--color-blue); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-pen"></i> Edit</button>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    ${statusSpan}
+                    ${roleSpan}
+                    <button onclick="openEditMemberModal('${m.id}')" style="background: var(--color-blue); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; margin-left: 5px;"><i class="fa-solid fa-pen"></i> Edit</button>
                 </div>
             </div>
         `;

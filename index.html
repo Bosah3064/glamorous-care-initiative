@@ -599,8 +599,10 @@
                             <div class="profile-header-info">
                                 <h3 id="profileName">Member Name</h3>
                                 <p class="profile-subtitle" id="profileEmail">email@example.com</p>
-                                <span class="status-badge status-active" id="profileStatus">Active</span>
-                                <span class="status-badge" id="profileRole" style="display:none; background: #dbeafe; color: #2563eb;"></span>
+                                <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
+                                    <span class="status-badge status-active" id="profileStatus">Active</span>
+                                    <span class="status-badge" id="profileRole" style="display:none; background: #dbeafe; color: #2563eb;"></span>
+                                </div>
                             </div>
                             <button class="btn btn-logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
                         </div>
@@ -1074,7 +1076,7 @@
     <!-- SheetJS for Excel Parsing -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="app.js?v=1.2"></script>
-    <!-- Version 2.4.0 -->
-    <script src="portal.js?v=2.4"></script>
+    <!-- Version 2.5.0 -->
+    <script src="portal.js?v=2.5"></script>
 </body>
 </html>
