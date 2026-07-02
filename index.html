@@ -591,6 +591,19 @@
 
             <!-- Dashboard View (hidden until login) -->
             <div class="container" id="portalDashboard" style="display:none;">
+                <!-- Incomplete Profile Alert -->
+                <div id="profileIncompleteAlert" style="display:none; margin-bottom: 20px; padding: 18px 20px; background: linear-gradient(135deg, #fef3c7, #fffbeb); border: 2px solid #f59e0b; border-radius: 12px; animation: pulse 2s infinite;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="font-size: 1.8rem;">⚠️</div>
+                        <div>
+                            <h4 style="margin: 0 0 5px; color: #92400e; font-size: 1rem;">Your Profile is Incomplete!</h4>
+                            <p style="margin: 0 0 8px; color: #78350f; font-size: 0.9rem; line-height: 1.5;">Please complete the following to keep your membership active:</p>
+                            <ul id="missingFieldsList" style="margin: 0; padding-left: 18px; color: #92400e; font-size: 0.85rem; line-height: 1.8;"></ul>
+                            <p style="margin: 8px 0 0; color: #78350f; font-size: 0.8rem;"><i class="fa-solid fa-circle-info"></i> Contact the admin or treasury to update your records.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Premium Profile Card -->
                 <div class="dashboard-header">
                     <div class="profile-card premium-profile">
@@ -1076,7 +1089,7 @@
     <!-- SheetJS for Excel Parsing -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="app.js?v=1.2"></script>
-    <!-- Version 2.7.0 -->
-    <script src="portal.js?v=2.7"></script>
+    <!-- Version 2.8.0 -->
+    <script src="portal.js?v=2.8"></script>
 </body>
 </html>

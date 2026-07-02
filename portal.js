@@ -218,6 +218,27 @@ async function loadDashboard(user, preloadedMember = null) {
             renderFormDetails(member.form_details);
         }
 
+        // ===== PROFILE COMPLETENESS CHECK =====
+        const missingFields = [];
+        const fd = member.form_details || {};
+        
+        if (!member.phone || member.phone.trim() === '') missingFields.push('<li><strong>Phone Number</strong></li>');
+        if (!fd.date_of_birth || fd.date_of_birth.trim() === '') missingFields.push('<li><strong>Date of Birth</strong></li>');
+        if (!fd.gender || fd.gender.trim() === '') missingFields.push('<li><strong>Gender</strong></li>');
+        if (!fd.marital_status || fd.marital_status.trim() === '') missingFields.push('<li><strong>Marital Status</strong></li>');
+        if (!fd.id_number || fd.id_number.trim() === '') missingFields.push('<li><strong>National ID Number</strong></li>');
+        if (!fd.occupation || fd.occupation.trim() === '') missingFields.push('<li><strong>Occupation / Profession</strong></li>');
+        if (!fd.next_of_kin_name || fd.next_of_kin_name.trim() === '') missingFields.push('<li><strong>Next of Kin Name</strong></li>');
+        if (!fd.next_of_kin_phone || fd.next_of_kin_phone.trim() === '') missingFields.push('<li><strong>Next of Kin Phone</strong></li>');
+
+        const alertDiv = document.getElementById('profileIncompleteAlert');
+        const missingList = document.getElementById('missingFieldsList');
+        if (alertDiv && missingList && missingFields.length > 0) {
+            missingList.innerHTML = missingFields.join('');
+            alertDiv.style.display = 'block';
+        } else if (alertDiv) {
+            alertDiv.style.display = 'none';
+        }
         // ===== ROLE-BASED ADMIN PANEL =====
         if (ADMIN_ROLES.includes(member.role) && adminPanel) {
             adminPanel.style.display = 'block';
@@ -1219,6 +1240,7 @@ if (btnProcessImport) {
             for (const m of scannedMembersToImport) {
                 // 1. Insert the member into the members table
                 const memberData = {
+                    id: crypto.randomUUID(),
                     full_name: m.full_name,
                     email: m.email,
                     phone: m.phone || null,
