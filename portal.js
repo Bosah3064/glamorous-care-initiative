@@ -1236,17 +1236,55 @@ if (btnProcessImport) {
         importMsg.style.display = "none";
         
         try {
-            // Call the Edge Function
-            const { data, error } = await client.functions.invoke('import-members', {
-                body: { members: scannedMembersToImport }
-            });
-            
-            if (error) {
-                throw new Error(error.message || "Failed to invoke function");
+            let importedCount = 0;
+            let errorMessages = [];
+
+            for (const m of scannedMembersToImport) {
+                // 1. Call the secure RPC function to create the auth user and member profile
+                const { data: newUserId, error: rpcError } = await client.rpc('import_single_member', {
+                    p_full_name: m.full_name,
+                    p_email: m.email,
+                    p_phone: m.phone || null,
+                    p_status: 'active',
+                    p_form_details: m.form_details || {}
+                });
+
+                if (rpcError) {
+                    console.error(`Error importing ${m.email}:`, rpcError);
+                    errorMessages.push(`${m.full_name}: ${rpcError.message}`);
+                    continue;
+                }
+
+                // 2. Insert payment records if any exist using the new user ID
+                if (m.payments && m.payments.length > 0 && newUserId) {
+                    const paymentRows = m.payments.map(p => ({
+                        member_id: newUserId,
+                        member_name: m.full_name,
+                        month: p.month,
+                        amount: p.amount,
+                        status: p.status || 'paid',
+                        payment_date: new Date().toISOString().split('T')[0],
+                        reference: 'Excel Import'
+                    }));
+
+                    const { error: payError } = await client
+                        .from('payments')
+                        .insert(paymentRows);
+
+                    if (payError) {
+                        console.error(`Error inserting payments for ${m.email}:`, payError);
+                        errorMessages.push(`${m.full_name} payments: ${payError.message}`);
+                    }
+                }
+
+                importedCount++;
+                // Update progress
+                btnProcessImport.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Importing ${importedCount}/${scannedMembersToImport.length}...`;
             }
-            
-            if (data && data.success) {
-                importMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully imported ${data.importedCount} members.`;
+
+            if (importedCount > 0) {
+                importMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully imported ${importedCount} of ${scannedMembersToImport.length} members.` + 
+                    (errorMessages.length > 0 ? `<br><small style="color:#d97706;">${errorMessages.length} errors occurred.</small>` : '');
                 importMsg.className = "admin-msg success";
                 importMsg.style.display = "block";
                 importResults.style.display = "none";
@@ -1256,7 +1294,7 @@ if (btnProcessImport) {
                 // Refresh list
                 loadAdminData();
             } else {
-                throw new Error(data?.error || "Unknown error occurred during import.");
+                throw new Error("No members were imported. " + errorMessages.join('; '));
             }
             
         } catch (err) {
