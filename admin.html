@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCI Admin Panel — Treasurer Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f1f5f9; margin: 0; padding: 20px; font-family: 'Outfit', sans-serif; }
+        .admin-container { max-width: 1000px; margin: 0 auto; }
+        .admin-header { background: linear-gradient(135deg, var(--color-blue), var(--color-purple)); color: white; padding: 25px 30px; border-radius: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .admin-header h1 { font-size: 1.5rem; margin: 0; }
+        .admin-header p { opacity: 0.85; margin: 5px 0 0; }
+        .admin-card { background: white; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 25px; }
+        .admin-card h3 { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .admin-card h3 i { color: var(--color-blue); }
+        .admin-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .admin-form .form-group { margin-bottom: 15px; }
+        .admin-form label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; color: #374151; }
+        .admin-form input, .admin-form select { width: 100%; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem; font-family: 'Outfit', sans-serif; box-sizing: border-box; }
+        .admin-form input:focus, .admin-form select:focus { border-color: var(--color-blue); outline: none; }
+        .admin-msg { padding: 12px 15px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; display: none; }
+        .admin-msg.success { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; }
+        .admin-msg.error { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+        .members-list { margin-top: 15px; }
+        .member-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; }
+        .member-row:hover { background: #f8fafc; border-color: var(--color-blue); }
+        .member-row .name { font-weight: 600; }
+        .member-row .email { color: #6b7280; font-size: 0.9rem; }
+        .member-row .badge { padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; }
+        .badge-active { background: #dcfce7; color: #16a34a; }
+        .badge-probation { background: #fef3c7; color: #d97706; }
+        .badge-admin { background: #dbeafe; color: #2563eb; }
+        .admin-login { max-width: 400px; margin: 100px auto; }
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box input { padding-left: 40px; }
+        .search-box i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+        @media (max-width: 768px) { .admin-form .form-row { grid-template-columns: 1fr; } .admin-header { flex-direction: column; text-align: center; } }
+    </style>
+</head>
+<body>
+    <!-- Admin Login -->
+    <div class="admin-container" id="adminLogin">
+        <div class="admin-login">
+            <div class="admin-card">
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <img src="assets/logo.png" alt="GCI" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px;">
+                    <h2>Treasurer Login</h2>
+                    <p style="color: #9ca3af;">Access the admin dashboard</p>
+                </div>
+                <div class="admin-msg" id="adminLoginError"></div>
+                <form id="adminLoginForm" class="admin-form">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-envelope"></i> Email</label>
+                        <input type="email" id="adminEmail" required placeholder="admin@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-lock"></i> Password</label>
+                        <input type="password" id="adminPassword" required placeholder="Enter password">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
+                </form>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="index.html" style="color: var(--color-blue);">← Back to Website</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div class="admin-container" id="adminDashboard" style="display:none;">
+        <div class="admin-header">
+            <div>
+                <h1><i class="fa-solid fa-shield-halved"></i> Treasurer Dashboard</h1>
+                <p>Glamorous Care Initiative — Admin Panel</p>
+            </div>
+            <div>
+                <a href="index.html" class="btn" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); margin-right: 10px;"><i class="fa-solid fa-home"></i> Website</a>
+                <button class="btn" id="adminLogout" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- Add Payment -->
+        <div class="admin-card">
+            <h3><i class="fa-solid fa-plus-circle"></i> Add Payment Record</h3>
+            <div class="admin-msg" id="paymentMsg"></div>
+            <form id="addPaymentForm" class="admin-form">
+                <div class="form-group">
+                    <label>Select Member</label>
+                    <select id="paymentMember" required>
+                        <option value="">— Choose a member —</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount (KES)</label>
+                        <input type="number" id="paymentAmount" required placeholder="200" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Month</label>
+                        <input type="text" id="paymentMonth" required placeholder="e.g., July 2026">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" id="paymentDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="paymentStatus">
+                            <option value="paid">Paid</option>
+                            <option value="pending">Pending</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Reference (MPESA code, etc.)</label>
+                    <input type="text" id="paymentRef" placeholder="e.g., QHL7K2BXYZ">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Payment</button>
+            </form>
+        </div>
+
+        <!-- Members List -->
+        <div class="admin-card">
+            <h3><i class="fa-solid fa-users"></i> All Members</h3>
+            <div class="search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="memberSearch" placeholder="Search by name or email...">
+            </div>
+            <div class="members-list" id="membersList">
+                <p style="text-align: center; color: #9ca3af;">Loading members...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://wbprrsuhkmdreuzhzmkq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndicHJyc3Voa21kcmV1emh6bWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTAwMDYsImV4cCI6MjA5ODU4NjAwNn0.UI-hCP649fmYMV8Srnv0ARbG3Lvdgd260bcJ0RUt0N8';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let allMembers = [];
+
+        // Admin Login
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            const errorDiv = document.getElementById('adminLoginError');
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                errorDiv.className = 'admin-msg error';
+                errorDiv.textContent = error.message;
+                return;
+            }
+
+            // Check if user is admin
+            const { data: member } = await supabase.from('members').select('role').eq('id', data.user.id).single();
+
+            if (!member || member.role !== 'admin') {
+                errorDiv.className = 'admin-msg error';
+                errorDiv.textContent = 'Access denied. Admin privileges required.';
+                await supabase.auth.signOut();
+                return;
+            }
+
+            document.getElementById('adminLogin').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            loadMembers();
+        });
+
+        // Logout
+        document.getElementById('adminLogout').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            document.getElementById('adminDashboard').style.display = 'none';
+            document.getElementById('adminLogin').style.display = 'block';
+        });
+
+        // Load Members
+        async function loadMembers() {
+            const { data: members } = await supabase.from('members').select('*').order('full_name');
+            allMembers = members || [];
+            renderMembers(allMembers);
+            populateMemberDropdown(allMembers);
+        }
+
+        function renderMembers(members) {
+            const list = document.getElementById('membersList');
+            if (members.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#9ca3af;">No members found.</p>';
+                return;
+            }
+            list.innerHTML = members.map(m => {
+                const badgeClass = m.role === 'admin' ? 'badge-admin' : m.status === 'active' ? 'badge-active' : 'badge-probation';
+                const badgeText = m.role === 'admin' ? 'Admin' : m.status.charAt(0).toUpperCase() + m.status.slice(1);
+                return `
+                    <div class="member-row">
+                        <div>
+                            <div class="name">${m.full_name}</div>
+                            <div class="email">${m.email} ${m.phone ? '• ' + m.phone : ''}</div>
+                        </div>
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function populateMemberDropdown(members) {
+            const select = document.getElementById('paymentMember');
+            select.innerHTML = '<option value="">— Choose a member —</option>';
+            members.forEach(m => {
+                select.innerHTML += `<option value="${m.id}" data-name="${m.full_name}">${m.full_name} (${m.email})</option>`;
+            });
+        }
+
+        // Search
+        document.getElementById('memberSearch').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = allMembers.filter(m =>
+                m.full_name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
+            );
+            renderMembers(filtered);
+        });
+
+        // Add Payment
+        document.getElementById('addPaymentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgDiv = document.getElementById('paymentMsg');
+            const memberSelect = document.getElementById('paymentMember');
+            const selectedOption = memberSelect.options[memberSelect.selectedIndex];
+
+            const payment = {
+                member_id: memberSelect.value,
+                member_name: selectedOption.getAttribute('data-name'),
+                amount: parseInt(document.getElementById('paymentAmount').value),
+                month: document.getElementById('paymentMonth').value,
+                payment_date: document.getElementById('paymentDate').value,
+                status: document.getElementById('paymentStatus').value,
+                reference: document.getElementById('paymentRef').value || null,
+                added_by: 'treasurer'
+            };
+
+            const { error } = await supabase.from('payments').insert(payment);
+
+            if (error) {
+                msgDiv.className = 'admin-msg error';
+                msgDiv.textContent = 'Error: ' + error.message;
+            } else {
+                msgDiv.className = 'admin-msg success';
+                msgDiv.textContent = `✅ Payment of KES ${payment.amount} for ${payment.member_name} (${payment.month}) saved successfully!`;
+                document.getElementById('addPaymentForm').reset();
+            }
+
+            setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 5000);
+        });
+
+        // Check session on load
+        (async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data: member } = await supabase.from('members').select('role').eq('id', session.user.id).single();
+                if (member && member.role === 'admin') {
+                    document.getElementById('adminLogin').style.display = 'none';
+                    document.getElementById('adminDashboard').style.display = 'block';
+                    loadMembers();
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -27,6 +27,7 @@
             <a href="#gallery" class="nav-link">Gallery</a>
             <a href="#news" class="nav-link">News & Events</a>
             <a href="#contact" class="nav-link">Contact Us</a>
+            <a href="#portal" class="nav-link nav-portal"><i class="fa-solid fa-circle-user"></i> My Portal</a>
         </nav>
     </header>
 
@@ -498,6 +499,150 @@
                 </div>
             </div>
         </section>
+
+        <!-- Section: Member Portal -->
+        <section id="portal" class="page">
+            <div class="container section-header">
+                <h2><i class="fa-solid fa-shield-halved"></i> Member Portal</h2>
+                <div class="divider"></div>
+                <p>Access your personalized dashboard to track contributions and membership status.</p>
+            </div>
+
+            <!-- Login View -->
+            <div class="container" id="portalLogin">
+                <div class="portal-auth-wrapper">
+                    <!-- Login Form -->
+                    <div class="portal-auth-card" id="loginFormContainer">
+                        <div class="auth-card-header">
+                            <div class="auth-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
+                            <h3>Welcome Back</h3>
+                            <p>Sign in to access your dashboard</p>
+                        </div>
+                        <div class="auth-error" id="loginError" style="display:none;"></div>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="loginEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+                                <input type="email" id="loginEmail" required placeholder="your.email@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
+                                <input type="password" id="loginPassword" required placeholder="Enter your password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
+                        </form>
+                        <div class="auth-footer">
+                            <p>Don't have an account? <a href="#" id="showSignup">Create one here</a></p>
+                        </div>
+                    </div>
+
+                    <!-- Signup Form -->
+                    <div class="portal-auth-card" id="signupFormContainer" style="display:none;">
+                        <div class="auth-card-header">
+                            <div class="auth-icon"><i class="fa-solid fa-user-plus"></i></div>
+                            <h3>Create Account</h3>
+                            <p>Join GCI and track your membership</p>
+                        </div>
+                        <div class="auth-error" id="signupError" style="display:none;"></div>
+                        <form id="signupForm">
+                            <div class="form-group">
+                                <label for="signupName"><i class="fa-solid fa-user"></i> Full Name</label>
+                                <input type="text" id="signupName" required placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label for="signupEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+                                <input type="email" id="signupEmail" required placeholder="your.email@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="signupPhone"><i class="fa-solid fa-phone"></i> Phone Number</label>
+                                <input type="tel" id="signupPhone" placeholder="0712345678">
+                            </div>
+                            <div class="form-group">
+                                <label for="signupPassword"><i class="fa-solid fa-lock"></i> Password</label>
+                                <input type="password" id="signupPassword" required placeholder="Min 6 characters">
+                            </div>
+                            <div class="form-group">
+                                <label for="signupConfirmPassword"><i class="fa-solid fa-lock"></i> Confirm Password</label>
+                                <input type="password" id="signupConfirmPassword" required placeholder="Repeat your password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-user-plus"></i> Create Account</button>
+                        </form>
+                        <div class="auth-footer">
+                            <p>Already have an account? <a href="#" id="showLogin">Sign in here</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard View (hidden until login) -->
+            <div class="container" id="portalDashboard" style="display:none;">
+                <!-- Profile Card -->
+                <div class="dashboard-header">
+                    <div class="profile-card">
+                        <div class="profile-avatar" id="profileAvatar">GC</div>
+                        <div class="profile-info">
+                            <h3 id="profileName">Member Name</h3>
+                            <p id="profileEmail">email@example.com</p>
+                            <p><i class="fa-solid fa-phone"></i> <span id="profilePhone">N/A</span></p>
+                            <p><i class="fa-solid fa-calendar"></i> Joined: <span id="profileJoinDate">N/A</span></p>
+                            <span class="status-badge status-active" id="profileStatus">Active</span>
+                        </div>
+                        <button class="btn btn-logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue"><i class="fa-solid fa-coins"></i></div>
+                        <div class="stat-info">
+                            <h4 id="totalContributions">KES 0</h4>
+                            <p>Total Contributions</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="stat-info">
+                            <h4 id="totalPayments">0</h4>
+                            <p>Payments Made</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-orange"><i class="fa-solid fa-clock"></i></div>
+                        <div class="stat-info">
+                            <h4 id="pendingPayments">0</h4>
+                            <p>Pending</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment History -->
+                <div class="payments-section">
+                    <h3><i class="fa-solid fa-receipt"></i> Payment History</h3>
+                    <div class="table-responsive">
+                        <table class="payments-table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <i class="fa-solid fa-receipt"></i>
+                                        <p>No payment records yet.</p>
+                                        <small>Your payments will appear here once recorded by the Treasurer.</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer id="footer">
@@ -511,6 +656,7 @@
                 <a href="#about">About Us</a>
                 <a href="#membership">Membership</a>
                 <a href="#register">Register</a>
+                <a href="#portal">Member Portal</a>
                 <a href="#activities">Activities</a>
                 <a href="#contact">Contact Us</a>
             </div>
@@ -530,6 +676,8 @@
         </div>
     </footer>
 
-    <script src="app.js?v=1.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js?v=1.2"></script>
+    <script src="portal.js?v=1.0"></script>
 </body>
 </html>
