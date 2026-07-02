@@ -7,20 +7,20 @@ const SUPABASE_URL = 'https://wbprrsuhkmdreuzhzmkq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndicHJyc3Voa21kcmV1emh6bWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTAwMDYsImV4cCI6MjA5ODU4NjAwNn0.UI-hCP649fmYMV8Srnv0ARbG3Lvdgd260bcJ0RUt0N8';
 
 // Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // DOM Elements
 const loginView = document.getElementById('portalLogin');
 const dashboardView = document.getElementById('portalDashboard');
 const loginForm = document.getElementById('loginForm');
-const signupForm = document.getElementById('signupForm');
 const loginError = document.getElementById('loginError');
-const signupError = document.getElementById('signupError');
 const logoutBtn = document.getElementById('logoutBtn');
-const showSignupLink = document.getElementById('showSignup');
-const showLoginLink = document.getElementById('showLogin');
 const loginFormContainer = document.getElementById('loginFormContainer');
-const signupFormContainer = document.getElementById('signupFormContainer');
+
+// Password Reset Elements
+const resetPasswordFormContainer = document.getElementById('resetPasswordFormContainer');
+const resetPasswordForm = document.getElementById('resetPasswordForm');
+const resetError = document.getElementById('resetError');
 
 // Dashboard Elements
 const profileName = document.getElementById('profileName');
@@ -29,27 +29,14 @@ const profilePhone = document.getElementById('profilePhone');
 const profileStatus = document.getElementById('profileStatus');
 const profileJoinDate = document.getElementById('profileJoinDate');
 const profileAvatar = document.getElementById('profileAvatar');
+const profileDetailsGrid = document.getElementById('profileDetailsGrid');
 const paymentsTableBody = document.getElementById('paymentsTableBody');
 const totalContributions = document.getElementById('totalContributions');
 const totalPayments = document.getElementById('totalPayments');
 const pendingPayments = document.getElementById('pendingPayments');
 
-// Toggle between Login and Signup forms
-if (showSignupLink) {
-    showSignupLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        loginFormContainer.style.display = 'none';
-        signupFormContainer.style.display = 'block';
-    });
-}
-
-if (showLoginLink) {
-    showLoginLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        signupFormContainer.style.display = 'none';
-        loginFormContainer.style.display = 'block';
-    });
-}
+// Global state
+let currentSessionUser = null;
 
 // Login Handler
 if (loginForm) {
@@ -63,7 +50,7 @@ if (loginForm) {
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';
         loginError.style.display = 'none';
 
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await client.auth.signInWithPassword({
             email: email,
             password: password
         });
@@ -74,119 +61,120 @@ if (loginForm) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
         } else {
-            await loadDashboard(data.user);
+            currentSessionUser = data.user;
+            await checkUserAndLoadDashboard(data.user);
         }
     });
 }
 
-// Signup Handler
-if (signupForm) {
-    signupForm.addEventListener('submit', async (e) => {
+// Password Reset Handler
+if (resetPasswordForm) {
+    resetPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fullName = document.getElementById('signupName').value;
-        const email = document.getElementById('signupEmail').value;
-        const phone = document.getElementById('signupPhone').value;
-        const password = document.getElementById('signupPassword').value;
-        const confirmPassword = document.getElementById('signupConfirmPassword').value;
-        const submitBtn = signupForm.querySelector('button[type="submit"]');
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+        const submitBtn = resetPasswordForm.querySelector('button[type="submit"]');
 
-        signupError.style.display = 'none';
+        resetError.style.display = 'none';
 
-        if (password !== confirmPassword) {
-            signupError.textContent = 'Passwords do not match.';
-            signupError.style.display = 'block';
+        if (newPassword !== confirmNewPassword) {
+            resetError.textContent = 'Passwords do not match.';
+            resetError.style.display = 'block';
             return;
         }
 
-        if (password.length < 6) {
-            signupError.textContent = 'Password must be at least 6 characters.';
-            signupError.style.display = 'block';
+        if (newPassword.length < 6) {
+            resetError.textContent = 'Password must be at least 6 characters.';
+            resetError.style.display = 'block';
             return;
         }
 
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
 
-        // Sign up user
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password
+        // Update auth password
+        const { error: authError } = await client.auth.updateUser({
+            password: newPassword
         });
 
-        if (error) {
-            signupError.textContent = error.message;
-            signupError.style.display = 'block';
+        if (authError) {
+            resetError.textContent = authError.message;
+            resetError.style.display = 'block';
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
+            submitBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Save & Continue';
             return;
         }
 
-        // Create member profile
-        const { error: profileError } = await supabase
+        // Update member flag in db
+        const { error: dbError } = await client
             .from('members')
-            .insert({
-                id: data.user.id,
-                full_name: fullName,
-                email: email,
-                phone: phone,
-                status: 'probation',
-                role: 'member'
-            });
+            .update({ requires_password_reset: false })
+            .eq('id', currentSessionUser.id);
 
-        if (profileError) {
-            signupError.textContent = 'Account created but profile setup failed. Please contact admin.';
-            signupError.style.display = 'block';
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
-            return;
+        if (dbError) {
+            console.error('Failed to update member reset flag:', dbError);
+            // Non-critical, let them through
         }
 
-        // Auto-login after signup
-        await loadDashboard(data.user);
+        resetPasswordFormContainer.style.display = 'none';
+        await loadDashboard(currentSessionUser);
     });
 }
 
-// Logout Handler
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        dashboardView.style.display = 'none';
-        loginView.style.display = 'block';
-        loginFormContainer.style.display = 'block';
-        signupFormContainer.style.display = 'none';
-        // Reset forms
-        if (loginForm) loginForm.reset();
-        if (signupForm) signupForm.reset();
-        const submitBtn = loginForm.querySelector('button[type="submit"]');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
-    });
-}
-
-// Load Dashboard
-async function loadDashboard(user) {
-    loginView.style.display = 'none';
-    dashboardView.style.display = 'block';
-
-    // Fetch member profile
-    const { data: member, error: memberError } = await supabase
+// Check if user requires password reset, else load dashboard
+async function checkUserAndLoadDashboard(user) {
+    // Fetch member profile to check reset flag
+    const { data: member, error: memberError } = await client
         .from('members')
         .select('*')
         .eq('id', user.id)
         .single();
 
-    if (memberError || !member) {
+    if (memberError) {
+        console.error('Error fetching member:', memberError);
+    }
+
+    if (member && member.requires_password_reset) {
+        // Show forced reset form
+        loginFormContainer.style.display = 'none';
+        resetPasswordFormContainer.style.display = 'block';
+        loginView.style.display = 'block';
+        dashboardView.style.display = 'none';
+    } else {
+        await loadDashboard(user, member);
+    }
+}
+
+// Load Dashboard
+async function loadDashboard(user, preloadedMember = null) {
+    loginView.style.display = 'none';
+    dashboardView.style.display = 'block';
+
+    let member = preloadedMember;
+    
+    if (!member) {
+        const { data, error } = await client
+            .from('members')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+        member = data;
+    }
+
+    if (!member) {
         profileName.textContent = user.email;
         profileEmail.textContent = user.email;
-        profilePhone.textContent = 'N/A';
+        if (profilePhone) profilePhone.textContent = 'N/A';
         profileStatus.textContent = 'New';
         profileStatus.className = 'status-badge status-probation';
-        profileJoinDate.textContent = 'N/A';
+        if (profileJoinDate) profileJoinDate.textContent = 'N/A';
     } else {
         profileName.textContent = member.full_name;
         profileEmail.textContent = member.email;
-        profilePhone.textContent = member.phone || 'N/A';
-        profileJoinDate.textContent = formatDate(member.join_date);
+        
+        // Ensure static elements are updated initially
+        if (profilePhone) profilePhone.textContent = member.phone || 'N/A';
+        if (profileJoinDate) profileJoinDate.textContent = formatDate(member.join_date);
         
         // Generate avatar initials
         const initials = member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -194,11 +182,16 @@ async function loadDashboard(user) {
 
         // Status badge
         profileStatus.textContent = member.status.charAt(0).toUpperCase() + member.status.slice(1);
-        profileStatus.className = `status-badge status-${member.status}`;
+        profileStatus.className = \`status-badge status-\${member.status}\`;
+
+        // Render extra form details if they exist
+        if (member.form_details) {
+            renderFormDetails(member.form_details);
+        }
     }
 
     // Fetch payments
-    const { data: payments, error: paymentsError } = await supabase
+    const { data: payments, error: paymentsError } = await client
         .from('payments')
         .select('*')
         .eq('member_id', user.id)
@@ -208,12 +201,83 @@ async function loadDashboard(user) {
     renderPayments(payments || []);
 }
 
+function renderFormDetails(details) {
+    // Keep Phone and Joined Date which are static in HTML, but append new ones
+    // First, save the existing static HTML elements so we can restore them and append new ones
+    
+    const phoneEl = document.getElementById('profilePhone');
+    const joinEl = document.getElementById('profileJoinDate');
+    
+    const phoneTxt = phoneEl ? phoneEl.textContent : 'N/A';
+    const joinTxt = joinEl ? joinEl.textContent : 'N/A';
+    
+    // Instead of replacing the whole grid, we'll selectively append
+    const existingHTML = \`
+        <div class="detail-item">
+            <i class="fa-solid fa-phone"></i>
+            <div>
+                <small>Phone Number</small>
+                <p id="profilePhone">\${phoneTxt}</p>
+            </div>
+        </div>
+        <div class="detail-item">
+            <i class="fa-solid fa-calendar"></i>
+            <div>
+                <small>Member Since</small>
+                <p id="profileJoinDate">\${joinTxt}</p>
+            </div>
+        </div>
+    \`;
+
+    let extraHTML = '';
+    
+    // Map of known form fields to icons
+    const iconMap = {
+        'id_number': 'fa-id-card',
+        'branch': 'fa-building',
+        'address': 'fa-location-dot',
+        'occupation': 'fa-briefcase',
+        'gender': 'fa-venus-mars',
+        'date_of_birth': 'fa-cake-candles'
+    };
+
+    for (const [key, value] of Object.entries(details)) {
+        if (!value) continue;
+        
+        // Format key from "id_number" to "ID Number"
+        const formattedKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        
+        // Guess an icon based on key name, fallback to a list icon
+        let icon = 'fa-list';
+        for (const [kw, ic] of Object.entries(iconMap)) {
+            if (key.toLowerCase().includes(kw)) {
+                icon = ic;
+                break;
+            }
+        }
+
+        extraHTML += \`
+            <div class="detail-item">
+                <i class="fa-solid \${icon}"></i>
+                <div>
+                    <small>\${formattedKey}</small>
+                    <p>\${value}</p>
+                </div>
+            </div>
+        \`;
+    }
+
+    if (profileDetailsGrid) {
+        profileDetailsGrid.innerHTML = existingHTML + extraHTML;
+    }
+}
+
 // Render Payments Table
 function renderPayments(payments) {
     if (!paymentsTableBody) return;
 
     if (payments.length === 0) {
-        paymentsTableBody.innerHTML = `
+        paymentsTableBody.innerHTML = \`
             <tr>
                 <td colspan="5" class="empty-state">
                     <i class="fa-solid fa-receipt"></i>
@@ -221,7 +285,7 @@ function renderPayments(payments) {
                     <small>Your payments will appear here once recorded by the Treasurer.</small>
                 </td>
             </tr>
-        `;
+        \`;
         totalContributions.textContent = 'KES 0';
         totalPayments.textContent = '0';
         pendingPayments.textContent = '0';
@@ -245,18 +309,18 @@ function renderPayments(payments) {
         const statusIcon = payment.status === 'paid' ? 'fa-circle-check' :
                           payment.status === 'pending' ? 'fa-clock' : 'fa-triangle-exclamation';
 
-        return `
+        return \`
             <tr>
-                <td>${payment.month}</td>
-                <td><strong>KES ${payment.amount.toLocaleString()}</strong></td>
-                <td>${formatDate(payment.payment_date)}</td>
-                <td><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
-                <td>${payment.reference || '—'}</td>
+                <td>\${payment.month}</td>
+                <td><strong>KES \${payment.amount.toLocaleString()}</strong></td>
+                <td>\${formatDate(payment.payment_date)}</td>
+                <td><span class="status-badge \${statusClass}"><i class="fa-solid \${statusIcon}"></i> \${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
+                <td>\${payment.reference || '—'}</td>
             </tr>
-        `;
+        \`;
     }).join('');
 
-    totalContributions.textContent = `KES ${totalPaid.toLocaleString()}`;
+    totalContributions.textContent = \`KES \${totalPaid.toLocaleString()}\`;
     totalPayments.textContent = paidCount.toString();
     pendingPayments.textContent = pendingCount.toString();
 }
@@ -268,11 +332,32 @@ function formatDate(dateStr) {
     return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// Logout Handler
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        await client.auth.signOut();
+        currentSessionUser = null;
+        dashboardView.style.display = 'none';
+        loginView.style.display = 'block';
+        loginFormContainer.style.display = 'block';
+        resetPasswordFormContainer.style.display = 'none';
+        
+        // Reset forms
+        if (loginForm) loginForm.reset();
+        if (resetPasswordForm) resetPasswordForm.reset();
+        
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
+    });
+}
+
 // Check if user is already logged in on page load
 async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await client.auth.getSession();
     if (session) {
-        await loadDashboard(session.user);
+        currentSessionUser = session.user;
+        await checkUserAndLoadDashboard(session.user);
     }
 }
 

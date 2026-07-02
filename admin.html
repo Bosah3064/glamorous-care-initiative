@@ -83,6 +83,51 @@
             </div>
         </div>
 
+        <!-- Add New Member -->
+        <div class="admin-card">
+            <h3><i class="fa-solid fa-user-plus"></i> Create Member Account</h3>
+            <div class="admin-msg" id="addMemberMsg"></div>
+            <form id="addMemberForm" class="admin-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="newMemberName" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="newMemberEmail" required placeholder="john@example.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="newMemberPhone" placeholder="0712345678">
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="newMemberRole">
+                            <option value="member">Member</option>
+                            <option value="treasury">Treasury</option>
+                            <option value="admin">Admin</option>
+                            <option value="chairperson">Chairperson</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID Number (Optional)</label>
+                        <input type="text" id="newMemberId" placeholder="e.g. 12345678">
+                    </div>
+                    <div class="form-group">
+                        <label>Branch (Optional)</label>
+                        <input type="text" id="newMemberBranch" placeholder="e.g. Nairobi">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnCreateMember"><i class="fa-solid fa-user-plus"></i> Create Account</button>
+            </form>
+            <p style="font-size: 0.85rem; color: #6b7280; margin-top: 10px;">New accounts will be created with the default password <strong>12345678</strong> and will be prompted to reset it on first login.</p>
+        </div>
+
         <!-- Add Payment -->
         <div class="admin-card">
             <h3><i class="fa-solid fa-plus-circle"></i> Add Payment Record</h3>
@@ -141,9 +186,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const SUPABASE_URL = 'https://wbprrsuhkmdreuzhzmkq.supabase.co';
+        const SUPABASE_URL = 'https://wbprrsuhkmdreuzhzmkq.client.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndicHJyc3Voa21kcmV1emh6bWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTAwMDYsImV4cCI6MjA5ODU4NjAwNn0.UI-hCP649fmYMV8Srnv0ARbG3Lvdgd260bcJ0RUt0N8';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const client = window.client.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allMembers = [];
 
@@ -154,7 +199,7 @@
             const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('adminLoginError');
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
 
             if (error) {
                 errorDiv.className = 'admin-msg error';
@@ -163,12 +208,12 @@
             }
 
             // Check if user is admin
-            const { data: member } = await supabase.from('members').select('role').eq('id', data.user.id).single();
+            const { data: member } = await client.from('members').select('role').eq('id', data.user.id).single();
 
             if (!member || member.role !== 'admin') {
                 errorDiv.className = 'admin-msg error';
                 errorDiv.textContent = 'Access denied. Admin privileges required.';
-                await supabase.auth.signOut();
+                await client.auth.signOut();
                 return;
             }
 
@@ -179,14 +224,14 @@
 
         // Logout
         document.getElementById('adminLogout').addEventListener('click', async () => {
-            await supabase.auth.signOut();
+            await client.auth.signOut();
             document.getElementById('adminDashboard').style.display = 'none';
             document.getElementById('adminLogin').style.display = 'block';
         });
 
         // Load Members
         async function loadMembers() {
-            const { data: members } = await supabase.from('members').select('*').order('full_name');
+            const { data: members } = await client.from('members').select('*').order('full_name');
             allMembers = members || [];
             renderMembers(allMembers);
             populateMemberDropdown(allMembers);
@@ -248,7 +293,7 @@
                 added_by: 'treasurer'
             };
 
-            const { error } = await supabase.from('payments').insert(payment);
+            const { error } = await client.from('payments').insert(payment);
 
             if (error) {
                 msgDiv.className = 'admin-msg error';
@@ -264,9 +309,9 @@
 
         // Check session on load
         (async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await client.auth.getSession();
             if (session) {
-                const { data: member } = await supabase.from('members').select('role').eq('id', session.user.id).single();
+                const { data: member } = await client.from('members').select('role').eq('id', session.user.id).single();
                 if (member && member.role === 'admin') {
                     document.getElementById('adminLogin').style.display = 'none';
                     document.getElementById('adminDashboard').style.display = 'block';
