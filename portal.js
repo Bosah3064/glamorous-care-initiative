@@ -222,14 +222,16 @@ async function loadDashboard(user, preloadedMember = null) {
         const missingFields = [];
         const fd = member.form_details || {};
         
-        if (!member.phone || member.phone.trim() === '') missingFields.push('<li><strong>Phone Number</strong></li>');
-        if (!fd.date_of_birth || fd.date_of_birth.trim() === '') missingFields.push('<li><strong>Date of Birth</strong></li>');
-        if (!fd.gender || fd.gender.trim() === '') missingFields.push('<li><strong>Gender</strong></li>');
-        if (!fd.marital_status || fd.marital_status.trim() === '') missingFields.push('<li><strong>Marital Status</strong></li>');
-        if (!fd.id_number || fd.id_number.trim() === '') missingFields.push('<li><strong>National ID Number</strong></li>');
-        if (!fd.occupation || fd.occupation.trim() === '') missingFields.push('<li><strong>Occupation / Profession</strong></li>');
-        if (!fd.next_of_kin_name || fd.next_of_kin_name.trim() === '') missingFields.push('<li><strong>Next of Kin Name</strong></li>');
-        if (!fd.next_of_kin_phone || fd.next_of_kin_phone.trim() === '') missingFields.push('<li><strong>Next of Kin Phone</strong></li>');
+        const isMissing = (val) => !val || String(val).trim() === '';
+        
+        if (isMissing(member.phone)) missingFields.push('<li><strong>Phone Number</strong></li>');
+        if (isMissing(fd.date_of_birth)) missingFields.push('<li><strong>Date of Birth</strong></li>');
+        if (isMissing(fd.gender)) missingFields.push('<li><strong>Gender</strong></li>');
+        if (isMissing(fd.marital_status)) missingFields.push('<li><strong>Marital Status</strong></li>');
+        if (isMissing(fd.id_number)) missingFields.push('<li><strong>National ID Number</strong></li>');
+        if (isMissing(fd.occupation)) missingFields.push('<li><strong>Occupation / Profession</strong></li>');
+        if (isMissing(fd.next_of_kin_name)) missingFields.push('<li><strong>Next of Kin Name</strong></li>');
+        if (isMissing(fd.next_of_kin_phone)) missingFields.push('<li><strong>Next of Kin Phone</strong></li>');
 
         const alertDiv = document.getElementById('profileIncompleteAlert');
         const missingList = document.getElementById('missingFieldsList');
