@@ -1020,6 +1020,16 @@ if (btnScanFile) {
                 const emailHeader = headers.find(h => h.toLowerCase().includes('email'));
                 const nameHeader = headers.find(h => h.toLowerCase().includes('name'));
                 const phoneHeader = headers.find(h => h.toLowerCase().includes('phone'));
+                const genderHeader = headers.find(h => h.toLowerCase().includes('gender'));
+                const dobHeader = headers.find(h => h.toLowerCase().includes('date of birth') || h.toLowerCase().includes('dob'));
+                const maritalHeader = headers.find(h => h.toLowerCase().includes('marital'));
+                const idHeader = headers.find(h => h.toLowerCase().includes('id number') || h.toLowerCase().includes('national id'));
+                const branchHeader = headers.find(h => h.toLowerCase().includes('branch'));
+                const occupationHeader = headers.find(h => h.toLowerCase().includes('occupation') || h.toLowerCase().includes('profession') || h.toLowerCase().includes('skill'));
+                const nokNameHeader = headers.find(h => h.toLowerCase().includes('next of kin full name') || h.toLowerCase().includes('kin name') || h.toLowerCase().includes('kin full name'));
+                const nokPhoneHeader = headers.find(h => h.toLowerCase().includes('next of kin phone') || h.toLowerCase().includes('kin phone'));
+                const dependantsHeader = headers.find(h => h.toLowerCase().includes('dependants') || h.toLowerCase().includes('dependents'));
+                const dependantCountHeader = headers.find(h => h.toLowerCase().includes('dependant count') || h.toLowerCase().includes('how many dependants'));
 
                 if (!emailHeader) {
                     throw new Error("Could not find an 'Email' column in the spreadsheet.");
@@ -1027,6 +1037,25 @@ if (btnScanFile) {
                 if (!nameHeader) {
                     throw new Error("Could not find a 'Name' column in the spreadsheet.");
                 }
+
+                // Identify potential payment columns (e.g. "Jan", "Feb", "March", "July 2026")
+                const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                const paymentCols = [];
+                headers.forEach(h => {
+                    const cleanH = h.trim().toLowerCase();
+                    // Match if header matches month names
+                    const matchedMonthIndex = monthsShort.findIndex(m => cleanH === m.toLowerCase()) !== -1 ? monthsShort.findIndex(m => cleanH === m.toLowerCase()) :
+                                              monthsFull.findIndex(m => cleanH === m.toLowerCase());
+                                              
+                    if (matchedMonthIndex !== -1) {
+                        paymentCols.push({
+                            header: h,
+                            monthName: monthsShort[matchedMonthIndex]
+                        });
+                    }
+                });
 
                 // Check against existing members
                 const existingEmails = new Set((allMembers || []).map(m => m.email.toLowerCase()));
@@ -1039,12 +1068,42 @@ if (btnScanFile) {
                     const phone = phoneHeader ? (row[phoneHeader] || "").toString().trim() : "";
                     
                     if (email && name && !existingEmails.has(email.toLowerCase())) {
-                        // Also make sure we don't have duplicates in the spreadsheet itself
                         if (!scannedMembersToImport.find(m => m.email.toLowerCase() === email.toLowerCase())) {
+                            // Extract payment values
+                            const payments = [];
+                            const currentYear = new Date().getFullYear();
+                            
+                            paymentCols.forEach(col => {
+                                const amountVal = row[col.header];
+                                if (amountVal) {
+                                    const amount = parseInt(amountVal.toString().replace(/,/g, ''), 10);
+                                    if (amount > 0) {
+                                        payments.push({
+                                            month: `${col.monthName} ${currentYear}`,
+                                            amount: amount,
+                                            status: 'paid'
+                                        });
+                                    }
+                                }
+                            });
+
                             scannedMembersToImport.push({
                                 full_name: name,
                                 email: email,
-                                phone: phone
+                                phone: phone,
+                                form_details: {
+                                    gender: genderHeader ? (row[genderHeader] || "").toString().trim() : "",
+                                    date_of_birth: dobHeader ? (row[dobHeader] || "").toString().trim() : "",
+                                    marital_status: maritalHeader ? (row[maritalHeader] || "").toString().trim() : "",
+                                    id_number: idHeader ? (row[idHeader] || "").toString().trim() : "",
+                                    branch: branchHeader ? (row[branchHeader] || "").toString().trim() : "",
+                                    occupation: occupationHeader ? (row[occupationHeader] || "").toString().trim() : "",
+                                    next_of_kin_name: nokNameHeader ? (row[nokNameHeader] || "").toString().trim() : "",
+                                    next_of_kin_phone: nokPhoneHeader ? (row[nokPhoneHeader] || "").toString().trim() : "",
+                                    dependants: dependantsHeader ? (row[dependantsHeader] || "").toString().trim() : "",
+                                    dependant_count: dependantCountHeader ? (row[dependantCountHeader] || "").toString().trim() : ""
+                                },
+                                payments: payments
                             });
                         }
                     }

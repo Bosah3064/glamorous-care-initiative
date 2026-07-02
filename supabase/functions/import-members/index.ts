@@ -9,7 +9,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { status: 200, headers: corsHeaders })
   }
 
   try {
@@ -77,7 +77,7 @@ serve(async (req) => {
 
         const userId = authData.user.id
 
-        // 2. Insert into members table
+        // 2. Insert into members table with form_details
         const { error: dbError } = await supabase.from('members').insert({
           id: userId,
           full_name: fullName,
@@ -85,11 +85,30 @@ serve(async (req) => {
           phone: phone,
           role: 'member',
           status: 'active',
-          requires_password_reset: true // Force them to change 12345678
+          requires_password_reset: true, // Force them to change 12345678
+          form_details: member.form_details || {}
         })
 
         if (dbError) {
           throw new Error(`Failed to insert into members table for ${email}: ${dbError.message}`)
+        }
+
+        // 3. Insert payments if any exist
+        if (member.payments && Array.isArray(member.payments)) {
+          for (const payment of member.payments) {
+            const { error: paymentError } = await supabase.from('payments').insert({
+              member_id: userId,
+              member_name: fullName,
+              amount: payment.amount,
+              month: payment.month,
+              payment_date: new Date().toISOString().split('T')[0], // Use today's date
+              status: payment.status || 'paid',
+              reference: 'Excel Bulk Import'
+            })
+            if (paymentError) {
+              console.error(`Failed to insert payment for ${email}:`, paymentError.message)
+            }
+          }
         }
 
         importedCount++
