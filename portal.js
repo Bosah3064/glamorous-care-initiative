@@ -1236,64 +1236,17 @@ if (btnProcessImport) {
         importMsg.style.display = "none";
         
         try {
-            let importedCount = 0;
-            let errorMessages = [];
-
-            for (const m of scannedMembersToImport) {
-                // 1. Insert the member into the members table
-                const memberData = {
-                    id: crypto.randomUUID(),
-                    full_name: m.full_name,
-                    email: m.email,
-                    phone: m.phone || null,
-                    status: 'active',
-                    role: 'member',
-                    form_details: m.form_details || {},
-                    join_date: new Date().toISOString().split('T')[0]
-                };
-
-                const { data: insertedMember, error: memberError } = await client
-                    .from('members')
-                    .insert(memberData)
-                    .select()
-                    .single();
-
-                if (memberError) {
-                    console.error(`Error inserting ${m.email}:`, memberError);
-                    errorMessages.push(`${m.full_name}: ${memberError.message}`);
-                    continue;
-                }
-
-                // 2. Insert payment records if any exist
-                if (m.payments && m.payments.length > 0 && insertedMember) {
-                    const paymentRows = m.payments.map(p => ({
-                        member_id: insertedMember.id,
-                        member_name: m.full_name,
-                        month: p.month,
-                        amount: p.amount,
-                        status: p.status || 'paid',
-                        payment_date: new Date().toISOString().split('T')[0],
-                        reference: 'Excel Import'
-                    }));
-
-                    const { error: payError } = await client
-                        .from('payments')
-                        .insert(paymentRows);
-
-                    if (payError) {
-                        console.error(`Error inserting payments for ${m.email}:`, payError);
-                        errorMessages.push(`${m.full_name} payments: ${payError.message}`);
-                    }
-                }
-
-                importedCount++;
-                // Update progress
-                btnProcessImport.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Importing ${importedCount}/${scannedMembersToImport.length}...`;
+            // Call the Edge Function
+            const { data, error } = await client.functions.invoke('import-members', {
+                body: { members: scannedMembersToImport }
+            });
+            
+            if (error) {
+                throw new Error(error.message || "Failed to invoke function");
             }
-
-            if (importedCount > 0) {
-                importMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully imported ${importedCount} of ${scannedMembersToImport.length} members.` + 
-                    (errorMessages.length > 0 ? `<br><small style="color:#d97706;">${errorMessages.length} errors occurred.</small>` : '');
+            
+            if (data && data.success) {
+                importMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully imported ${data.importedCount} members.`;
                 importMsg.className = "admin-msg success";
                 importMsg.style.display = "block";
                 importResults.style.display = "none";
@@ -1303,7 +1256,7 @@ if (btnProcessImport) {
                 // Refresh list
                 loadAdminData();
             } else {
-                throw new Error("No members were imported. " + errorMessages.join('; '));
+                throw new Error(data?.error || "Unknown error occurred during import.");
             }
             
         } catch (err) {
