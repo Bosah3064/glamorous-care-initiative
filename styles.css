@@ -104,6 +104,23 @@ ul {
     color: var(--color-white);
 }
 
+.btn-pulse {
+    animation: pulse-animation 2s infinite;
+    position: relative;
+}
+
+@keyframes pulse-animation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(165, 36, 61, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 15px rgba(165, 36, 61, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(165, 36, 61, 0);
+    }
+}
+
 /* Navbar */
 .navbar {
     position: fixed;
