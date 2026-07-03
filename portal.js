@@ -2198,18 +2198,18 @@ if (registrationForm) {
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
         
         const formDetails = {
-            'Date of Birth': dob,
-            'Gender': gender,
-            'Marital Status': maritalStatus,
-            'National ID Number': idNumber,
-            'Occupation': occupation,
+            'date_of_birth': dob,
+            'gender': gender,
+            'marital_status': maritalStatus,
+            'national_id_number': idNumber,
+            'occupation': occupation,
             'Has Dependants': hasDependants,
             'Dependant Types': depTypes.join(', '),
             'Relatives': relatives,
-            'Next of Kin Full Name': nokName,
-            'Next of Kin National ID Number': nokId,
-            'Next of Kin Phone Number': nokPhone,
-            'Relationship to You': nokRelationship
+            'next_of_kin_full_name': nokName,
+            'next_of_kin_national_id_number': nokId,
+            'next_of_kin_phone_number': nokPhone,
+            'relationship_to_you': nokRelationship
         };
         
         try {
