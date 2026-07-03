@@ -1650,18 +1650,40 @@ window.loadMemberPaymentsAdmin = async function(memberId) {
 // DYNAMIC PROFILE FORM & EXPORTS
 // =============================================
 
-const registrationSchema = [
-    { name: "Phone Number", key: "phone", type: "tel", required: true, isFieldOnMember: true },
-    { name: "Date of Birth", key: "date_of_birth", type: "date", required: true },
-    { name: "Gender", key: "gender", type: "select", options: ["Male", "Female"], required: true },
-    { name: "Marital Status", key: "marital_status", type: "select", options: ["Married", "Single", "Divorced", "Widowed"], required: true },
-    { name: "National ID Number", key: "id_number", type: "text", required: true },
-    { name: "Occupation / Profession", key: "occupation", type: "text", required: true },
-    { name: "Next of Kin Full Name", key: "next_of_kin_name", type: "text", required: true },
-    { name: "Next of Kin National ID Number", key: "next_of_kin_id", type: "text", required: true },
-    { name: "Next of Kin Phone Number", key: "next_of_kin_phone", type: "text", required: true },
-    { name: "Relationship to Next of Kin", key: "next_of_kin_relationship", type: "text", required: true }
-];
+const canonicalFields = {
+    'phone': { name: "Phone Number", key: "phone", type: "tel", required: true, isFieldOnMember: true },
+    'date_of_birth': { name: "Date of Birth", key: "date_of_birth", type: "date", required: true },
+    'gender': { name: "Gender", key: "gender", type: "select", options: ["Male", "Female"], required: true },
+    'marital_status': { name: "Marital Status", key: "marital_status", type: "select", options: ["Married", "Single", "Divorced", "Widowed"], required: true },
+    'id_number': { name: "National ID Number", key: "id_number", type: "text", required: true },
+    'occupation': { name: "Occupation / Profession", key: "occupation", type: "text", required: true },
+    'next_of_kin_name': { name: "Next of Kin Full Name", key: "next_of_kin_name", type: "text", required: true },
+    'next_of_kin_id': { name: "Next of Kin National ID Number", key: "next_of_kin_id", type: "text", required: true },
+    'next_of_kin_phone': { name: "Next of Kin Phone Number", key: "next_of_kin_phone", type: "text", required: true },
+    'next_of_kin_relationship': { name: "Relationship to Next of Kin", key: "next_of_kin_relationship", type: "text", required: true }
+};
+
+const variationsMap = {
+    'date_of_birth': ['date of birth', 'dob', 'date_of_birth', 'date of birth '],
+    'gender': ['gender', 'gender '],
+    'marital_status': ['marital status', 'marital_status', 'marital status '],
+    'id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number', 'national id number '],
+    'occupation': ['occupation', 'profession', 'occupation/profession', 'occupation / profession', 'occupation '],
+    'next_of_kin_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name', 'next of kin full name '],
+    'next_of_kin_id': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number', 'next of kin national id number '],
+    'next_of_kin_phone': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number', 'next of kin phone number '],
+    'next_of_kin_relationship': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship', 'relationship to you ']
+};
+
+const getCanonicalKey = (fieldName) => {
+    const cleanName = fieldName.toLowerCase().trim();
+    for (const [canonicalKey, variations] of Object.entries(variationsMap)) {
+        if (variations.some(v => v.toLowerCase().trim() === cleanName)) {
+            return canonicalKey;
+        }
+    }
+    return null;
+};
 
 // Open the modal to allow members to edit their own profiles
 window.openUpdateProfileModal = async function() {
@@ -1673,27 +1695,125 @@ window.openUpdateProfileModal = async function() {
     msg.style.display = 'none';
     document.getElementById('updateProfileModal').style.display = 'flex';
     
-    const getFieldVal = (canonicalKey) => {
-        const fd = currentMember.form_details || {};
-        if (canonicalKey === 'phone') return currentMember.phone;
-        
-        const variations = {
-            'date_of_birth': ['date of birth', 'dob', 'date_of_birth'],
-            'gender': ['gender'],
-            'marital_status': ['marital status', 'marital_status'],
-            'id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
-            'occupation': ['occupation', 'profession', 'occupation/profession', 'occupation / profession'],
-            'next_of_kin_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
-            'next_of_kin_id': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
-            'next_of_kin_phone': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
-            'next_of_kin_relationship': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship']
+    // 1. Fetch form schema from database
+    let dbFields = [];
+    try {
+        const { data, error } = await client
+            .from('form_schema')
+            .select('fields')
+            .eq('key', 'profile_fields')
+            .single();
+            
+        if (!error && data && data.fields) {
+            dbFields = data.fields;
+        }
+    } catch (err) {
+        console.warn("Failed to load schema from database, using fallback schema.", err);
+    }
+    
+    // 2. Parse database fields into schema objects
+    const resolvedSchema = [];
+    
+    // Always include Phone Number at the start as a member field
+    resolvedSchema.push(canonicalFields['phone']);
+    
+    if (dbFields && dbFields.length > 0) {
+        dbFields.forEach(field => {
+            let fieldName = '';
+            let fieldType = 'text';
+            let fieldOptions = [];
+            
+            if (typeof field === 'object' && field !== null) {
+                fieldName = field.name.trim();
+                fieldType = field.type;
+                fieldOptions = field.options || [];
+            } else {
+                fieldName = String(field).trim();
+                const lowerName = fieldName.toLowerCase();
+                if (lowerName.includes('gender')) {
+                    fieldType = 'select';
+                    fieldOptions = ['Male', 'Female', 'Other'];
+                } else if (lowerName.includes('marital')) {
+                    fieldType = 'select';
+                    fieldOptions = ['Single', 'Married', 'Divorced', 'Widowed'];
+                } else if (lowerName.includes('date') || lowerName.includes('dob')) {
+                    fieldType = 'date';
+                } else if (lowerName.includes('yes/no') || lowerName.includes('confirm') || lowerName.includes('dependants')) {
+                    fieldType = 'boolean';
+                }
+            }
+            
+            // Check if it's a timestamp, or column 2, or redundant/ignored header
+            const cleanLower = fieldName.toLowerCase();
+            if (cleanLower === 'timestamp' || cleanLower === 'column 2' || cleanLower.includes('add another relative')) {
+                return;
+            }
+            
+            // Check if it maps to any canonical fields
+            const canonKey = getCanonicalKey(fieldName);
+            if (canonKey) {
+                // If it's already added, avoid duplicates
+                if (resolvedSchema.some(f => f.key === canonKey)) return;
+                
+                // Use canonical settings but retain the exact database name
+                resolvedSchema.push({
+                    ...canonicalFields[canonKey],
+                    name: fieldName,
+                    dbKey: fieldName
+                });
+            } else {
+                // It is a custom field!
+                resolvedSchema.push({
+                    name: fieldName,
+                    key: 'custom_' + fieldName.replace(/[^a-zA-Z0-9]/g, '_'),
+                    type: fieldType,
+                    options: fieldOptions,
+                    required: false,
+                    isCustom: true,
+                    dbKey: fieldName
+                });
+            }
+        });
+    } else {
+        // Fallback schema if database form_schema is empty
+        const targetKeys = {
+            'date_of_birth': 'Date of Birth',
+            'gender': 'Gender',
+            'marital_status': 'Marital Status',
+            'id_number': 'National ID Number',
+            'occupation': 'Occupation',
+            'next_of_kin_name': 'Next of Kin Full Name',
+            'next_of_kin_id': 'Next of Kin National ID Number',
+            'next_of_kin_phone': 'Next of Kin Phone Number',
+            'next_of_kin_relationship': 'Relationship to You'
         };
+        Object.keys(canonicalFields).forEach(k => {
+            if (k === 'phone') return;
+            resolvedSchema.push({
+                ...canonicalFields[k],
+                dbKey: targetKeys[k] || k
+            });
+        });
+    }
+    
+    // Store resolvedSchema globally on the window so the submit handler can access it
+    window.currentProfileSchema = resolvedSchema;
 
-        const list = variations[canonicalKey] || [canonicalKey];
-        for (const key of Object.keys(fd)) {
-            const cleanKey = key.toLowerCase().trim();
-            if (list.includes(cleanKey)) {
-                return fd[key];
+    const getFieldVal = (field) => {
+        const fd = currentMember.form_details || {};
+        if (field.isFieldOnMember) return currentMember[field.key];
+        
+        // Match exact dbKey first
+        if (field.dbKey && fd[field.dbKey] !== undefined) return fd[field.dbKey];
+        
+        // Variations check
+        if (variationsMap[field.key]) {
+            for (const variation of variationsMap[field.key]) {
+                for (const key of Object.keys(fd)) {
+                    if (key.toLowerCase().trim() === variation.toLowerCase().trim()) {
+                        return fd[key];
+                    }
+                }
             }
         }
         return undefined;
@@ -1701,15 +1821,13 @@ window.openUpdateProfileModal = async function() {
 
     const isMissing = (val) => !val || String(val).trim() === '';
 
-    // Find which fields are missing
-    const missingSchemaFields = registrationSchema.filter(f => isMissing(getFieldVal(f.key)));
+    // Find which required fields are missing
+    const missingSchemaFields = resolvedSchema.filter(f => f.required && isMissing(getFieldVal(f)));
     
-    // Determine fields to show. If some are missing, show only the missing ones.
-    // Otherwise show all fields.
-    const fieldsToShow = missingSchemaFields.length > 0 ? missingSchemaFields : registrationSchema;
+    // Determine fields to show
+    const fieldsToShow = missingSchemaFields.length > 0 ? missingSchemaFields : resolvedSchema;
     
     let html = '';
-    
     if (missingSchemaFields.length > 0) {
         html += `
             <div style="grid-column: span 2; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
@@ -1728,19 +1846,33 @@ window.openUpdateProfileModal = async function() {
         `;
     }
 
-    fieldsToShow.forEach((field) => {
-        const val = getFieldVal(field.key) || '';
-        const inputId = `member_up_${field.key}`;
+    fieldsToShow.forEach((field, index) => {
+        const val = getFieldVal(field) || '';
+        const inputId = `member_up_${index}`;
         const reqAttr = field.required ? 'required' : '';
         
         let inputHtml = '';
         if (field.type === 'select') {
-            const selectOptions = field.options.map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('');
+            const selectOptions = (field.options || []).map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('');
             inputHtml = `
                 <select id="${inputId}" ${reqAttr}>
                     <option value="">— Select —</option>
                     ${selectOptions}
                 </select>
+            `;
+        } else if (field.type === 'boolean') {
+            const cleanVal = String(val).toLowerCase();
+            const isYes = cleanVal === 'yes' || cleanVal === 'true' || cleanVal === 'y';
+            const isNo = cleanVal === 'no' || cleanVal === 'false' || cleanVal === 'n';
+            inputHtml = `
+                <div style="display: flex; gap: 20px; align-items: center; padding: 10px 0;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                        <input type="radio" name="${inputId}_bool" id="${inputId}_yes" value="Yes" ${isYes ? 'checked' : ''}> Yes
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                        <input type="radio" name="${inputId}_bool" id="${inputId}_no" value="No" ${isNo ? 'checked' : ''}> No
+                    </label>
+                </div>
             `;
         } else if (field.type === 'date') {
             let dateVal = val;
@@ -1749,7 +1881,7 @@ window.openUpdateProfileModal = async function() {
             }
             inputHtml = `<input type="date" id="${inputId}" ${reqAttr} value="${dateVal}">`;
         } else {
-            inputHtml = `<input type="${field.type}" id="${inputId}" ${reqAttr} value="${val}" placeholder="${field.name}">`;
+            inputHtml = `<input type="${field.type || 'text'}" id="${inputId}" ${reqAttr} value="${val}" placeholder="${field.name}">`;
         }
         
         html += `
@@ -1773,33 +1905,29 @@ if (updateProfileForm) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         
-        const targetKeys = {
-            'date_of_birth': 'Date of Birth',
-            'gender': 'Gender',
-            'marital_status': 'Marital Status',
-            'id_number': 'National ID Number',
-            'occupation': 'Occupation',
-            'next_of_kin_name': 'Next of Kin Full Name',
-            'next_of_kin_id': 'Next of Kin National ID Number',
-            'next_of_kin_phone': 'Next of Kin Phone Number',
-            'next_of_kin_relationship': 'Relationship to You'
-        };
-
+        const resolvedSchema = window.currentProfileSchema || [];
         const formDetails = { ...(currentMember.form_details || {}) };
         let phone = currentMember.phone;
 
-        registrationSchema.forEach((field) => {
-            const inputEl = document.getElementById(`member_up_${field.key}`);
-            if (inputEl) {
-                const val = inputEl.value.trim();
-                if (field.isFieldOnMember) {
-                    if (field.key === 'phone') phone = val;
-                } else {
-                    const dbKey = targetKeys[field.key];
-                    if (dbKey) {
-                        formDetails[dbKey] = val;
-                    }
-                }
+        resolvedSchema.forEach((field, index) => {
+            const inputId = `member_up_${index}`;
+            let val = '';
+            
+            if (field.type === 'boolean') {
+                const yesEl = document.getElementById(`${inputId}_yes`);
+                const noEl = document.getElementById(`${inputId}_no`);
+                if (yesEl && yesEl.checked) val = 'Yes';
+                else if (noEl && noEl.checked) val = 'No';
+            } else {
+                const inputEl = document.getElementById(inputId);
+                if (inputEl) val = inputEl.value.trim();
+            }
+            
+            if (field.isFieldOnMember) {
+                if (field.key === 'phone') phone = val;
+            } else {
+                const dbKey = field.dbKey || field.name;
+                formDetails[dbKey] = val;
             }
         });
 
