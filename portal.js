@@ -213,10 +213,8 @@ async function loadDashboard(user, preloadedMember = null) {
             profileRole.style.display = 'none';
         }
 
-        // Render extra form details
-        if (member.form_details) {
-            renderFormDetails(member.form_details);
-        }
+        // Render form details directly into the main grid
+        renderFormDetails(member);
 
         // ===== PROFILE COMPLETENESS CHECK =====
         const missingFields = [];
@@ -261,48 +259,63 @@ async function loadDashboard(user, preloadedMember = null) {
 // =============================================
 // RENDER FORM DETAILS
 // =============================================
-function renderFormDetails(details) {
-    const phoneEl = document.getElementById('profilePhone');
-    const joinEl = document.getElementById('profileJoinDate');
+function renderFormDetails(member) {
+    const grid = document.getElementById('profileDetailsGrid');
+    if (!grid) return;
     
-    const phoneTxt = phoneEl ? phoneEl.textContent : 'N/A';
-    const joinTxt = joinEl ? joinEl.textContent : 'N/A';
-    
-    // Check if we have any extra details to show
-    const extraKeys = Object.keys(details).filter(k => k !== 'date_of_birth' || details[k]);
-    const toggleBtn = document.getElementById('fullProfileToggle');
-    
-    if (extraKeys.length > 0 && toggleBtn) {
-        toggleBtn.style.display = 'block';
-    }
+    let html = `
+        <div class="detail-item">
+            <i class="fa-solid fa-phone"></i>
+            <div>
+                <small>Phone Number</small>
+                <p id="profilePhone">${member.phone || 'N/A'}</p>
+            </div>
+        </div>
+        <div class="detail-item">
+            <i class="fa-solid fa-calendar"></i>
+            <div>
+                <small>Member Since</small>
+                <p id="profileJoinDate">${formatDate(member.join_date)}</p>
+            </div>
+        </div>
+    `;
 
-    let extraHTML = '';
-    
     const iconMap = {
         'id_number': 'fa-id-card',
+        'id number': 'fa-id-card',
+        'national id': 'fa-id-card',
         'branch': 'fa-building',
         'address': 'fa-location-dot',
         'occupation': 'fa-briefcase',
+        'profession': 'fa-briefcase',
         'gender': 'fa-venus-mars',
         'date_of_birth': 'fa-cake-candles',
-        'marital_status': 'fa-heart',
-        'next_of_kin': 'fa-people-arrows',
-        'dependants': 'fa-children'
+        'date of birth': 'fa-cake-candles',
+        'dob': 'fa-cake-candles',
+        'marital': 'fa-heart',
+        'next of kin': 'fa-people-arrows',
+        'kin phone': 'fa-people-arrows',
+        'dependants': 'fa-children',
+        'dependents': 'fa-children'
     };
 
+    const details = member.form_details || {};
+
     for (const [key, value] of Object.entries(details)) {
-        if (!value) continue;
+        if (!value || String(value).trim() === '') continue;
         
         let displayValue = value;
-        const formattedKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const formattedKey = key.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         
-        // Format date of birth professionally (e.g., Excel date number to actual date)
-        if (key === 'date_of_birth') {
-            if (!isNaN(value)) {
-               // Assuming Excel serial date (days since 1900-01-01)
+        // Format date of birth professionally
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('date of birth') || lowerKey.includes('dob') || lowerKey.includes('date_of_birth')) {
+            if (!isNaN(value) && String(value).trim() !== '') {
                const excelEpoch = new Date(1899, 11, 31);
-               const dob = new Date(excelEpoch.getTime() + value * 86400000);
-               displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+               const dob = new Date(excelEpoch.getTime() + Number(value) * 86400000);
+               if (!isNaN(dob)) {
+                   displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+               }
             } else {
                const dob = new Date(value);
                if (!isNaN(dob)) {
@@ -312,14 +325,15 @@ function renderFormDetails(details) {
         }
         
         let icon = 'fa-list';
+        const cleanKey = key.replace(/_/g, ' ').toLowerCase();
         for (const [kw, ic] of Object.entries(iconMap)) {
-            if (key.toLowerCase().includes(kw)) {
+            if (cleanKey.includes(kw)) {
                 icon = ic;
                 break;
             }
         }
 
-        extraHTML += `
+        html += `
             <div class="detail-item">
                 <i class="fa-solid ${icon}"></i>
                 <div>
@@ -330,10 +344,7 @@ function renderFormDetails(details) {
         `;
     }
 
-    const extraGrid = document.getElementById('extraDetailsGrid');
-    if (extraGrid) {
-        extraGrid.innerHTML = extraHTML;
-    }
+    grid.innerHTML = html;
 }
 
 // Toggle full profile view
