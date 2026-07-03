@@ -1113,6 +1113,7 @@
                             <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> All Members</h3>
                             <div style="display: flex; gap: 10px;">
                                 <button onclick="exportMembersToExcel()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                                <button onclick="exportMembersToWord()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #2563eb; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-word"></i> Export Word</button>
                                 <button onclick="exportMembersToPDF()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #dc2626; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
                             </div>
                         </div>
@@ -1329,10 +1330,14 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS for Excel Parsing -->
+    <!-- Export Libraries -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
+
     <script src="app.js?v=1.2"></script>
-    <!-- Version 4.1.0 - Profile system registration keys fix -->
-    <script src="portal.js?v=4.1"></script>
+    <!-- Version 4.2.0 - Advanced Exports -->
+    <script src="portal.js?v=4.2"></script>
 </body>
 </html>

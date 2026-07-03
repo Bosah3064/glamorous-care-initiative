@@ -1936,6 +1936,7 @@ if (updateProfileForm) {
 }
 
 // Export all members' data to an Excel file
+// Export all members' data to an Excel file
 window.exportMembersToExcel = async function() {
     try {
         const { data: members, error } = await client
@@ -1945,27 +1946,50 @@ window.exportMembersToExcel = async function() {
             
         if (error) throw error;
         
+        const schema = typeof buildProfileSchema === 'function' ? buildProfileSchema() : [];
+        
         const flattened = members.map(m => {
             const row = {
                 "Full Name": m.full_name,
                 "Email": m.email,
                 "Phone": m.phone || '',
-                "Role": m.role,
+                "Role": m.role.toUpperCase(),
                 "Status": m.status,
-                "Join Date": m.join_date || ''
+                "Join Date": m.join_date ? new Date(m.join_date).toLocaleDateString() : ''
             };
             
-            // Inline all custom form details
-            if (m.form_details) {
-                for (const key in m.form_details) {
-                    row[key] = m.form_details[key] || '';
-                }
-            }
+            const fd = m.form_details || {};
+            schema.forEach(field => {
+                if (field.key === 'phone') return;
+                const val = typeof resolveFieldValue === 'function' ? resolveFieldValue(fd, field.key) : fd[field.key];
+                row[field.label] = val || '';
+            });
             
             return row;
         });
         
-        const worksheet = XLSX.utils.json_to_sheet(flattened);
+        const wsData = [
+            ["GLAMOROUS CARE INITIATIVE - MEMBERS DIRECTORY"],
+            ["Generated on " + new Date().toLocaleDateString()],
+            []
+        ];
+        
+        const headers = Object.keys(flattened[0] || {});
+        wsData.push(headers);
+        
+        flattened.forEach(rowObj => {
+            wsData.push(headers.map(h => rowObj[h]));
+        });
+        
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+        
+        if(!worksheet['!merges']) worksheet['!merges'] = [];
+        worksheet['!merges'].push({ s: {r:0, c:0}, e: {r:0, c:headers.length-1} });
+        worksheet['!merges'].push({ s: {r:1, c:0}, e: {r:1, c:headers.length-1} });
+        
+        const colWidths = headers.map(h => ({ wch: Math.max(15, h.length + 5) }));
+        worksheet['!cols'] = colWidths;
+        
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "GCI Members");
         XLSX.writeFile(workbook, "GCI_Members_Data.xlsx");
@@ -1985,85 +2009,105 @@ window.exportMembersToPDF = async function() {
             
         if (error) throw error;
         
+        const schema = typeof buildProfileSchema === 'function' ? buildProfileSchema() : [];
         const printWindow = window.open('', '_blank');
         
-        let tableRows = '';
+        // Get Logo Base64
+        let logoBase64 = '';
+        try {
+            const response = await fetch('assets/logo.png');
+            const blob = await response.blob();
+            logoBase64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        } catch(e) {
+            console.warn("Could not load logo for PDF", e);
+        }
+        
+        let cardsHTML = '';
         members.forEach(m => {
-            const phone = m.phone || 'N/A';
-            const statusLabel = m.status === 'active' ? 'Active' : m.status;
-            const branch = m.form_details?.Branch || m.form_details?.branch || 'N/A';
-            const idNo = m.form_details?.['National ID Number'] || m.form_details?.id_number || 'N/A';
-            const occupation = m.form_details?.Occupation || m.form_details?.occupation || 'N/A';
+            const fd = m.form_details || {};
             
-            tableRows += `
-                <tr>
-                    <td><strong>${m.full_name}</strong></td>
-                    <td>${m.email}</td>
-                    <td>${phone}</td>
-                    <td>${idNo}</td>
-                    <td>${branch}</td>
-                    <td>${occupation}</td>
-                    <td>${m.role.toUpperCase()}</td>
-                    <td><span class="status-${m.status}">${statusLabel}</span></td>
-                </tr>
+            let detailsHTML = `
+                <div class="field-row"><strong>Email:</strong> <span>${m.email}</span></div>
+                <div class="field-row"><strong>Phone:</strong> <span>${m.phone || 'N/A'}</span></div>
+                <div class="field-row"><strong>Role:</strong> <span>${m.role.toUpperCase()}</span></div>
+                <div class="field-row"><strong>Status:</strong> <span class="status-${m.status}">${m.status}</span></div>
+            `;
+            
+            schema.forEach(field => {
+                if (field.key === 'phone') return;
+                const val = typeof resolveFieldValue === 'function' ? resolveFieldValue(fd, field.key) : fd[field.key];
+                if (val) {
+                    detailsHTML += `<div class="field-row"><strong>${field.label}:</strong> <span>${val}</span></div>`;
+                }
+            });
+            
+            cardsHTML += `
+                <div class="card">
+                    <div class="card-header">${m.full_name}</div>
+                    <div class="card-body">
+                        ${detailsHTML}
+                    </div>
+                </div>
             `;
         });
+        
+        const logoHTML = logoBase64 ? `<img src="${logoBase64}" class="logo">` : '';
         
         const html = `
             <html>
             <head>
                 <title>GCI Members Directory Report</title>
                 <style>
-                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; margin: 30px; }
-                    .header { text-align: center; border-bottom: 3px double #3b82f6; padding-bottom: 20px; margin-bottom: 30px; }
-                    .title { font-size: 24px; font-weight: bold; color: #1e3a8a; margin: 0; }
-                    .subtitle { font-size: 14px; color: #555; margin: 5px 0 0 0; }
-                    .meta { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-top: 15px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-                    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-                    th { background-color: #f3f4f6; color: #1e3a8a; font-weight: bold; }
-                    tr:nth-child(even) { background-color: #fafafa; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; margin: 0; padding: 20px; background: white; }
+                    .header { text-align: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 20px; margin-bottom: 30px; }
+                    .logo { width: 80px; height: auto; margin-bottom: 10px; }
+                    .title { font-size: 26px; font-weight: bold; color: #1e3a8a; margin: 0; text-transform: uppercase; }
+                    .subtitle { font-size: 16px; color: #555; margin: 5px 0 0 0; }
+                    .meta { font-size: 13px; color: #666; margin-top: 10px; }
+                    
+                    .cards-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+                    
+                    .card { border: 1px solid #ccc; border-radius: 8px; break-inside: avoid; background: #fff; }
+                    .card-header { background: #1e3a8a; color: white; padding: 10px 15px; font-weight: bold; font-size: 16px; border-top-left-radius: 7px; border-top-right-radius: 7px; }
+                    .card-body { padding: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+                    .field-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+                    .field-row strong { color: #555; width: 45%; }
+                    .field-row span { width: 55%; text-align: right; font-weight: 500; }
+                    
                     .status-active { color: #16a34a; font-weight: bold; }
                     .status-probation { color: #d97706; font-weight: bold; }
+                    
                     @media print {
-                        body { margin: 15px; }
-                        .no-print { display: none; }
+                        body { padding: 0; margin: 15px; }
+                        .card { box-shadow: none; }
                     }
                 </style>
             </head>
             <body>
                 <div class="header">
+                    ${logoHTML}
                     <div class="title">GLAMOROUS CARE INITIATIVE</div>
-                    <div class="subtitle">Official Members Directory & Records Report</div>
+                    <div class="subtitle">Official Members Directory & Records</div>
                     <div class="meta">
-                        <span><strong>Total Members:</strong> ${members.length}</span>
-                        <span><strong>Generated On:</strong> ${new Date().toLocaleDateString('en-KE')}</span>
+                        Total Members: ${members.length} | Generated On: ${new Date().toLocaleDateString()}
                     </div>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Full Name</th>
-                            <th>Email Address</th>
-                            <th>Phone</th>
-                            <th>ID Number</th>
-                            <th>Branch</th>
-                            <th>Occupation</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-                <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+                <div class="cards-container">
+                    ${cardsHTML}
+                </div>
+                <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 10px; break-inside: avoid;">
                     This is an officially generated system report for GCI Administration. &copy; ${new Date().getFullYear()} GCI
                 </div>
                 <script>
                     window.onload = function() {
-                        window.print();
-                        setTimeout(function() { window.close(); }, 500);
+                        setTimeout(function() {
+                            window.print();
+                            setTimeout(function() { window.close(); }, 500);
+                        }, 500); // Give time for images to fully render
                     };
                 </script>
             </body>
@@ -2078,7 +2122,142 @@ window.exportMembersToPDF = async function() {
     }
 };
 
-// =============================================
+// Export all members' data to a Word Document
+window.exportMembersToWord = async function() {
+    try {
+        const { data: members, error } = await client
+            .from('members')
+            .select('*')
+            .order('full_name');
+            
+        if (error) throw error;
+        
+        const schema = typeof buildProfileSchema === 'function' ? buildProfileSchema() : [];
+        const { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, Table, TableRow, TableCell, BorderStyle, WidthType, AlignmentType, PageBreak } = window.docx;
+
+        let logoImage = null;
+        try {
+            const response = await fetch('assets/logo.png');
+            const blob = await response.blob();
+            logoImage = await blob.arrayBuffer();
+        } catch (e) {
+            console.warn('Could not load logo for Word export', e);
+        }
+
+        const children = [];
+
+        // Cover / Header
+        if (logoImage) {
+            children.push(
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                        new ImageRun({
+                            data: logoImage,
+                            transformation: { width: 100, height: 100 },
+                        }),
+                    ],
+                })
+            );
+        }
+
+        children.push(
+            new Paragraph({
+                text: "GLAMOROUS CARE INITIATIVE",
+                heading: HeadingLevel.TITLE,
+                alignment: AlignmentType.CENTER,
+            }),
+            new Paragraph({
+                text: "Official Members Directory",
+                heading: HeadingLevel.HEADING_1,
+                alignment: AlignmentType.CENTER,
+            }),
+            new Paragraph({
+                text: `Generated on ${new Date().toLocaleDateString()}  |  Total Members: ${members.length}`,
+                alignment: AlignmentType.CENTER,
+            }),
+            new Paragraph({ text: "", spacing: { after: 400 } })
+        );
+
+        // Members Loop
+        members.forEach((m, index) => {
+            const fd = m.form_details || {};
+            
+            // Member Name Header
+            children.push(
+                new Paragraph({
+                    text: m.full_name,
+                    heading: HeadingLevel.HEADING_2,
+                    spacing: { before: 400, after: 100 }
+                })
+            );
+
+            // Table for member details
+            const tableRows = [];
+            
+            // Add basic fields
+            const addRow = (label, value) => {
+                tableRows.push(
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
+                                width: { size: 30, type: WidthType.PERCENTAGE },
+                            }),
+                            new TableCell({
+                                children: [new Paragraph({ text: value || 'N/A' })],
+                                width: { size: 70, type: WidthType.PERCENTAGE },
+                            }),
+                        ],
+                    })
+                );
+            };
+
+            addRow("Email", m.email);
+            addRow("Phone", m.phone);
+            addRow("Role", m.role.toUpperCase());
+            addRow("Status", m.status);
+
+            // Add schema fields
+            schema.forEach(field => {
+                if (field.key === 'phone') return;
+                const val = typeof resolveFieldValue === 'function' ? resolveFieldValue(fd, field.key) : fd[field.key];
+                if (val) {
+                    addRow(field.label, String(val));
+                }
+            });
+
+            const table = new Table({
+                rows: tableRows,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+            });
+            children.push(table);
+            
+            // Spacing after each member
+            children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+        });
+
+        const doc = new Document({
+            sections: [{
+                properties: {},
+                children: children
+            }]
+        });
+
+        const blob = await Packer.toBlob(doc);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "GCI_Members_Directory.docx";
+        a.click();
+        URL.revokeObjectURL(url);
+        
+    } catch (err) {
+        console.error(err);
+        alert("Word Export failed: " + err.message);
+    }
+};
+
 // FIX: Scroll to top when any modal opens
 // =============================================
 (function fixModalScroll() {
