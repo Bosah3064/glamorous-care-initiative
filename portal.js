@@ -1671,6 +1671,9 @@ const canonicalFields = {
     'marital_status':           { label: "Marital Status",            key: "marital_status",           type: "select", options: ["Married", "Single", "Divorced", "Widowed"], required: true },
     'national_id_number':       { label: "National ID Number",        key: "national_id_number",       type: "text",   required: true },
     'occupation':               { label: "Occupation / Profession",   key: "occupation",               type: "text",   required: true },
+    'has_dependants':           { label: "Has Dependants",            key: "has_dependants",           type: "text",   required: false },
+    'dependant_types':          { label: "Dependant Types",           key: "dependant_types",          type: "text",   required: false },
+    'relatives':                { label: "Other Relatives",           key: "relatives",                type: "text",   required: false },
     'next_of_kin_full_name':    { label: "Next of Kin Full Name",     key: "next_of_kin_full_name",    type: "text",   required: true },
     'next_of_kin_national_id_number': { label: "Next of Kin National ID Number", key: "next_of_kin_national_id_number", type: "text", required: true },
     'next_of_kin_phone_number': { label: "Next of Kin Phone Number",  key: "next_of_kin_phone_number", type: "text",   required: true },
@@ -1684,6 +1687,9 @@ const variationsMap = {
     'marital_status':           ['marital status', 'marital_status'],
     'national_id_number':       ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
     'occupation':               ['occupation', 'profession', 'occupation/profession', 'occupation / profession'],
+    'has_dependants':           ['has dependants', 'dependants', 'has_dependants'],
+    'dependant_types':          ['dependant types', 'dependants types', 'dependant_types'],
+    'relatives':                ['relatives'],
     'next_of_kin_full_name':    ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
     'next_of_kin_national_id_number': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
     'next_of_kin_phone_number': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
@@ -1703,18 +1709,37 @@ const normalizeToCanonical = (raw) => {
 // Read a value from form_details trying all known variations of a canonical key
 const resolveFieldValue = (fd, canonicalKey) => {
     if (!fd) return undefined;
+    
+    let result = undefined;
+    
     // Direct match first
     if (fd[canonicalKey] !== undefined && fd[canonicalKey] !== null && String(fd[canonicalKey]).trim() !== '') {
-        return fd[canonicalKey];
+        result = fd[canonicalKey];
+    } else {
+        // Try all variations
+        const variations = variationsMap[canonicalKey] || [];
+        for (const fdKey of Object.keys(fd)) {
+            const cleanFdKey = fdKey.toLowerCase().trim();
+            if (cleanFdKey === canonicalKey || variations.some(v => v.toLowerCase().trim() === cleanFdKey)) {
+                result = fd[fdKey];
+                break;
+            }
+        }
     }
-    // Try all variations
-    const variations = variationsMap[canonicalKey] || [];
-    for (const fdKey of Object.keys(fd)) {
-        const cleanFdKey = fdKey.toLowerCase().trim();
-        if (cleanFdKey === canonicalKey) return fd[fdKey];
-        if (variations.some(v => v.toLowerCase().trim() === cleanFdKey)) return fd[fdKey];
+    
+    // Format arrays and objects properly instead of returning [object Object]
+    if (result && Array.isArray(result)) {
+        if (result.length === 0) return '';
+        // If it's an array of relative objects
+        if (typeof result[0] === 'object') {
+            return result.map(r => `${r.full_name || ''} (${r.relationship || ''}) - ${r.phone || ''}`).join(', ');
+        }
+        return result.join(', ');
+    } else if (result && typeof result === 'object') {
+        return JSON.stringify(result);
     }
-    return undefined;
+    
+    return result;
 };
 
 // Normalize a date value to YYYY-MM-DD for <input type="date">
@@ -1742,7 +1767,7 @@ const normalizeDateValue = (val) => {
 const buildProfileSchema = () => {
     const ordered = [
         'phone', 'date_of_birth', 'gender', 'marital_status',
-        'national_id_number', 'occupation',
+        'national_id_number', 'occupation', 'has_dependants', 'dependant_types', 'relatives',
         'next_of_kin_full_name', 'next_of_kin_national_id_number',
         'next_of_kin_phone_number', 'relationship_to_you'
     ];
