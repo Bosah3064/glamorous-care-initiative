@@ -2150,6 +2150,17 @@ window.exportMembersToPDF = async function() {
 // Export all members' data to a Word Document
 window.exportMembersToWord = async function() {
     try {
+        // Lazy-load docx library on first use (avoids Chrome background tab throttling)
+        if (!window.docx) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/docx@8.2.3/build/index.umd.js';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Failed to load Word export library'));
+                document.head.appendChild(script);
+            });
+        }
+        
         const { data: members, error } = await client
             .from('members')
             .select('*')
