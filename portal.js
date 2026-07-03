@@ -260,26 +260,42 @@ async function loadDashboard(user, preloadedMember = null) {
 // RENDER FORM DETAILS
 // =============================================
 function renderFormDetails(member) {
+    const phoneEl = document.getElementById('profilePhone');
+    const joinEl = document.getElementById('profileJoinDate');
     const grid = document.getElementById('profileDetailsGrid');
-    if (!grid) return;
+    const extraGrid = document.getElementById('extraDetailsGrid');
+    const toggleBtn = document.getElementById('fullProfileToggle');
     
-    let html = `
-        <div class="detail-item">
-            <i class="fa-solid fa-phone"></i>
-            <div>
-                <small>Phone Number</small>
-                <p id="profilePhone">${member.phone || 'N/A'}</p>
+    if (grid) {
+        grid.innerHTML = `
+            <div class="detail-item">
+                <i class="fa-solid fa-phone"></i>
+                <div>
+                    <small>Phone Number</small>
+                    <p id="profilePhone">${member.phone || 'N/A'}</p>
+                </div>
             </div>
-        </div>
-        <div class="detail-item">
-            <i class="fa-solid fa-calendar"></i>
-            <div>
-                <small>Member Since</small>
-                <p id="profileJoinDate">${formatDate(member.join_date)}</p>
+            <div class="detail-item">
+                <i class="fa-solid fa-calendar"></i>
+                <div>
+                    <small>Member Since</small>
+                    <p id="profileJoinDate">${formatDate(member.join_date)}</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
 
+    const details = member.form_details || {};
+    const extraKeys = Object.keys(details).filter(k => details[k] && String(details[k]).trim() !== '');
+
+    if (extraKeys.length > 0 && toggleBtn) {
+        toggleBtn.style.display = 'block';
+    } else if (toggleBtn) {
+        toggleBtn.style.display = 'none';
+    }
+
+    let extraHTML = '';
+    
     const iconMap = {
         'id_number': 'fa-id-card',
         'id number': 'fa-id-card',
@@ -298,8 +314,6 @@ function renderFormDetails(member) {
         'dependants': 'fa-children',
         'dependents': 'fa-children'
     };
-
-    const details = member.form_details || {};
 
     for (const [key, value] of Object.entries(details)) {
         if (!value || String(value).trim() === '') continue;
@@ -333,7 +347,7 @@ function renderFormDetails(member) {
             }
         }
 
-        html += `
+        extraHTML += `
             <div class="detail-item">
                 <i class="fa-solid ${icon}"></i>
                 <div>
@@ -344,7 +358,9 @@ function renderFormDetails(member) {
         `;
     }
 
-    grid.innerHTML = html;
+    if (extraGrid) {
+        extraGrid.innerHTML = extraHTML;
+    }
 }
 
 // Toggle full profile view
@@ -684,18 +700,53 @@ function setupAdminEventListeners() {
 
                     const headers = Object.keys(json[0]);
                     const ignoreHeaders = ['email', 'name', 'phone', 'full name', 'phone number', 'email address'];
-                    const customFields = headers.filter(h => {
-                        const clean = h.trim().toLowerCase();
-                        return !ignoreHeaders.some(ignore => clean.includes(ignore)) && clean !== '';
+                    
+                    const fieldDefinitions = [];
+                    
+                    headers.forEach(h => {
+                        const clean = h.trim();
+                        const cleanLower = clean.toLowerCase();
+                        if (ignoreHeaders.some(ignore => cleanLower.includes(ignore)) || clean === '') {
+                            return;
+                        }
+                        
+                        // Extract all unique values from this column to infer type
+                        const values = json.map(row => row[h]).filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+                        const uniqueValues = [...new Set(values.map(v => String(v).trim()))];
+                        
+                        let type = 'text';
+                        let options = [];
+                        
+                        const isYesNo = uniqueValues.length > 0 && uniqueValues.length <= 2 && uniqueValues.every(v => {
+                            const lv = v.toLowerCase();
+                            return lv === 'yes' || lv === 'no' || lv === 'true' || lv === 'false' || lv === 'y' || lv === 'n';
+                        });
+                        
+                        if (isYesNo) {
+                            type = 'boolean';
+                        } else if (uniqueValues.length > 1 && uniqueValues.length <= 6) {
+                            type = 'select';
+                            options = uniqueValues;
+                        } else if (values.some(v => String(v).length > 60)) {
+                            type = 'textarea';
+                        } else if (cleanLower.includes('date') || cleanLower.includes('dob')) {
+                            type = 'date';
+                        }
+                        
+                        fieldDefinitions.push({
+                            name: clean,
+                            type: type,
+                            options: options
+                        });
                     });
 
-                    if (customFields.length === 0) {
+                    if (fieldDefinitions.length === 0) {
                         throw new Error("No custom fields (columns) found in the Excel sheet.");
                     }
 
                     const { error } = await client.from('form_schema').upsert({
                         key: 'profile_fields',
-                        fields: customFields,
+                        fields: fieldDefinitions,
                         updated_at: new Date().toISOString()
                     });
 
@@ -703,7 +754,7 @@ function setupAdminEventListeners() {
 
                     configMsg.className = "admin-msg success";
                     configMsg.style.display = "block";
-                    configMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully configured ${customFields.length} custom fields!`;
+                    configMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully configured ${fieldDefinitions.length} custom fields!`;
                     configSchemaFile.value = '';
                 } catch (err) {
                     console.error(err);
@@ -1606,7 +1657,7 @@ window.openUpdateProfileModal = async function() {
     // Always insert Phone Number as a standard field
     let html = `
         <div class="form-group" style="grid-column: span 2;">
-            <label>Phone Number</label>
+            <label style="font-weight: 600; color: #374151;">Phone Number</label>
             <input type="tel" id="member_up_phone" required value="${currentMember.phone || ''}" placeholder="0712345678">
         </div>
     `;
@@ -1614,48 +1665,77 @@ window.openUpdateProfileModal = async function() {
     const fd = currentMember.form_details || {};
     
     fields.forEach((field, index) => {
-        const cleanName = field.trim();
+        let cleanName = '';
+        let type = 'text';
+        let options = [];
+        
+        if (typeof field === 'object' && field !== null) {
+            cleanName = field.name.trim();
+            type = field.type;
+            options = field.options || [];
+        } else {
+            cleanName = String(field).trim();
+            const lowerName = cleanName.toLowerCase();
+            if (lowerName.includes('gender')) {
+                type = 'select';
+                options = ['Male', 'Female', 'Other'];
+            } else if (lowerName.includes('marital')) {
+                type = 'select';
+                options = ['Single', 'Married', 'Divorced', 'Widowed'];
+            } else if (lowerName.includes('date of birth') || lowerName.includes('dob')) {
+                type = 'date';
+            } else if (lowerName.includes('yes/no') || lowerName.includes('confirm')) {
+                type = 'boolean';
+            }
+        }
+        
         const inputId = `member_up_${index}`;
         const val = fd[cleanName] || '';
         
         let inputHtml = '';
-        const lowerName = cleanName.toLowerCase();
         
-        if (lowerName.includes('gender')) {
+        if (type === 'select') {
+            const selectOptions = options.map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('');
             inputHtml = `
                 <select id="${inputId}">
                     <option value="">— Select —</option>
-                    <option value="Male" ${val === 'Male' ? 'selected' : ''}>Male</option>
-                    <option value="Female" ${val === 'Female' ? 'selected' : ''}>Female</option>
-                    <option value="Other" ${val === 'Other' ? 'selected' : ''}>Other</option>
+                    ${selectOptions}
                 </select>
             `;
-        } else if (lowerName.includes('marital')) {
+        } else if (type === 'boolean') {
+            const cleanVal = String(val).toLowerCase();
+            const isYes = cleanVal === 'yes' || cleanVal === 'true' || cleanVal === 'y';
+            const isNo = cleanVal === 'no' || cleanVal === 'false' || cleanVal === 'n';
             inputHtml = `
-                <select id="${inputId}">
-                    <option value="">— Select —</option>
-                    <option value="Single" ${val === 'Single' ? 'selected' : ''}>Single</option>
-                    <option value="Married" ${val === 'Married' ? 'selected' : ''}>Married</option>
-                    <option value="Divorced" ${val === 'Divorced' ? 'selected' : ''}>Divorced</option>
-                    <option value="Widowed" ${val === 'Widowed' ? 'selected' : ''}>Widowed</option>
-                </select>
+                <div style="display: flex; gap: 20px; align-items: center; padding: 10px 0;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                        <input type="radio" name="${inputId}_bool" id="${inputId}_yes" value="Yes" ${isYes ? 'checked' : ''}> Yes
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                        <input type="radio" name="${inputId}_bool" id="${inputId}_no" value="No" ${isNo ? 'checked' : ''}> No
+                    </label>
+                </div>
             `;
-        } else if (lowerName.includes('date of birth') || lowerName.includes('dob')) {
-            // Check if val is formatted as YYYY-MM-DD
+        } else if (type === 'textarea') {
+            inputHtml = `<textarea id="${inputId}" rows="2" style="width: 100%; box-sizing: border-box; padding: 10px; border: 2px solid #e5e7eb; border-radius: 10px; font-family: 'Outfit', sans-serif;">${val}</textarea>`;
+        } else if (type === 'date') {
             let dateVal = val;
             if (val && !val.includes('-') && !isNaN(Date.parse(val))) {
                 dateVal = new Date(val).toISOString().split('T')[0];
             }
             inputHtml = `<input type="date" id="${inputId}" value="${dateVal}">`;
-        } else if (lowerName.includes('phone') || lowerName.includes('number') || lowerName.includes('count')) {
-            inputHtml = `<input type="text" id="${inputId}" value="${val}">`;
         } else {
             inputHtml = `<input type="text" id="${inputId}" value="${val}">`;
         }
         
+        let isConditional = cleanName.toLowerCase().startsWith('if ');
+        let cardStyle = isConditional 
+            ? 'background: #f8fafc; border-left: 4px solid var(--color-blue); padding: 15px; border-radius: 8px; margin-bottom: 5px; grid-column: span 2; box-sizing: border-box;' 
+            : `grid-column: ${fields.length === 1 ? 'span 2' : 'span 1'};`;
+            
         html += `
-            <div class="form-group" style="grid-column: ${fields.length === 1 ? 'span 2' : 'span 1'};">
-                <label>${cleanName}</label>
+            <div class="form-group" style="${cardStyle}">
+                <label style="font-weight: 600; color: ${isConditional ? 'var(--color-blue)' : '#374151'}">${cleanName}</label>
                 ${inputHtml}
             </div>
         `;
@@ -1674,7 +1754,7 @@ if (updateProfileForm) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         
-        // Fetch current schema to map inputs back to keys
+        // Fetch current schema
         let fields = defaultProfileFields;
         try {
             const { data } = await client
@@ -1689,10 +1769,36 @@ if (updateProfileForm) {
         const formDetails = {};
         
         fields.forEach((field, index) => {
-            const cleanName = field.trim();
-            const inputEl = document.getElementById(`member_up_${index}`);
-            if (inputEl) {
-                formDetails[cleanName] = inputEl.value.trim();
+            let cleanName = '';
+            let type = 'text';
+            
+            if (typeof field === 'object' && field !== null) {
+                cleanName = field.name.trim();
+                type = field.type;
+            } else {
+                cleanName = String(field).trim();
+                const lowerName = cleanName.toLowerCase();
+                if (lowerName.includes('gender') || lowerName.includes('marital')) type = 'select';
+                else if (lowerName.includes('date') || lowerName.includes('dob')) type = 'date';
+                else if (lowerName.includes('yes/no') || lowerName.includes('confirm')) type = 'boolean';
+            }
+            
+            const inputId = `member_up_${index}`;
+            if (type === 'boolean') {
+                const yesEl = document.getElementById(`${inputId}_yes`);
+                const noEl = document.getElementById(`${inputId}_no`);
+                if (yesEl && yesEl.checked) {
+                    formDetails[cleanName] = 'Yes';
+                } else if (noEl && noEl.checked) {
+                    formDetails[cleanName] = 'No';
+                } else {
+                    formDetails[cleanName] = '';
+                }
+            } else {
+                const inputEl = document.getElementById(inputId);
+                if (inputEl) {
+                    formDetails[cleanName] = inputEl.value.trim();
+                }
             }
         });
         
@@ -1707,14 +1813,12 @@ if (updateProfileForm) {
                 
             if (error) throw error;
             
-            // Update local state
             currentMember.phone = phone;
             currentMember.form_details = formDetails;
             
             document.getElementById('updateProfileModal').style.display = 'none';
             alert('Your profile has been updated successfully!');
             
-            // Re-render and re-verify profile completeness
             checkUserAndLoadDashboard(currentSessionUser);
             
         } catch (err) {
