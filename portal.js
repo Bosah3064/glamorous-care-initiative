@@ -289,9 +289,47 @@ function renderFormDetails(member) {
     }
 
     const details = member.form_details || {};
-    const extraKeys = Object.keys(details).filter(k => details[k] && String(details[k]).trim() !== '');
+    
+    // Use the canonical schema for rendering
+    const schema = typeof buildProfileSchema === 'function' ? buildProfileSchema() : [];
+    
+    // Collect the fields to display
+    const displayItems = [];
+    
+    // Add canonical schema fields
+    if (schema && schema.length > 0) {
+        schema.forEach(field => {
+            if (field.key === 'phone') return; // Phone is already rendered above
+            
+            let val;
+            if (field.isFieldOnMember) val = member[field.key];
+            else val = typeof resolveFieldValue === 'function' ? resolveFieldValue(details, field.key) : details[field.key];
+            
+            if (val && String(val).trim() !== '') {
+                displayItems.push({
+                    label: field.label,
+                    value: val,
+                    key: field.key
+                });
+            }
+        });
+    } else {
+        // Fallback if schema isn't loaded for some reason
+        for (const [key, value] of Object.entries(details)) {
+            if (!value || String(value).trim() === '') continue;
+            const cleanKey = key.toLowerCase();
+            if (cleanKey === 'timestamp' || cleanKey === 'column 2' || cleanKey.includes('another relative')) continue;
+            
+            const formattedKey = key.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            displayItems.push({
+                label: formattedKey,
+                value: value,
+                key: key
+            });
+        }
+    }
 
-    if (extraKeys.length > 0 && toggleBtn) {
+    if (displayItems.length > 0 && toggleBtn) {
         toggleBtn.style.display = 'block';
     } else if (toggleBtn) {
         toggleBtn.style.display = 'none';
@@ -303,6 +341,7 @@ function renderFormDetails(member) {
         'id_number': 'fa-id-card',
         'id number': 'fa-id-card',
         'national id': 'fa-id-card',
+        'national_id_number': 'fa-id-card',
         'branch': 'fa-building',
         'address': 'fa-location-dot',
         'occupation': 'fa-briefcase',
@@ -318,23 +357,21 @@ function renderFormDetails(member) {
         'dependents': 'fa-children'
     };
 
-    for (const [key, value] of Object.entries(details)) {
-        if (!value || String(value).trim() === '') continue;
-        
-        let displayValue = value;
-        const formattedKey = key.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    displayItems.forEach(item => {
+        let displayValue = item.value;
+        const key = item.key;
         
         // Format date of birth professionally
         const lowerKey = key.toLowerCase();
         if (lowerKey.includes('date of birth') || lowerKey.includes('dob') || lowerKey.includes('date_of_birth')) {
-            if (!isNaN(value) && String(value).trim() !== '') {
+            if (!isNaN(displayValue) && String(displayValue).trim() !== '') {
                const excelEpoch = new Date(1899, 11, 31);
-               const dob = new Date(excelEpoch.getTime() + Number(value) * 86400000);
+               const dob = new Date(excelEpoch.getTime() + Number(displayValue) * 86400000);
                if (!isNaN(dob)) {
                    displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                }
             } else {
-               const dob = new Date(value);
+               const dob = new Date(displayValue);
                if (!isNaN(dob)) {
                    displayValue = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                }
@@ -354,12 +391,12 @@ function renderFormDetails(member) {
             <div class="detail-item">
                 <i class="fa-solid ${icon}"></i>
                 <div>
-                    <small>${formattedKey}</small>
+                    <small>${item.label}</small>
                     <p>${displayValue}</p>
                 </div>
             </div>
         `;
-    }
+    });
 
     if (extraGrid) {
         extraGrid.innerHTML = extraHTML;
