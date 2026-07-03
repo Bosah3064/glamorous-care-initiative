@@ -220,16 +220,43 @@ async function loadDashboard(user, preloadedMember = null) {
         const missingFields = [];
         const fd = member.form_details || {};
         
+        const getFieldVal = (canonicalKey) => {
+            if (canonicalKey === 'phone') return member.phone;
+            
+            const variations = {
+                'date_of_birth': ['date of birth', 'dob', 'date_of_birth'],
+                'gender': ['gender'],
+                'marital_status': ['marital status', 'marital_status'],
+                'id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
+                'occupation': ['occupation', 'profession', 'occupation/profession', 'occupation / profession'],
+                'next_of_kin_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
+                'next_of_kin_id': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
+                'next_of_kin_phone': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
+                'next_of_kin_relationship': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship']
+            };
+
+            const list = variations[canonicalKey] || [canonicalKey];
+            for (const key of Object.keys(fd)) {
+                const cleanKey = key.toLowerCase().trim();
+                if (list.includes(cleanKey)) {
+                    return fd[key];
+                }
+            }
+            return undefined;
+        };
+
         const isMissing = (val) => !val || String(val).trim() === '';
         
         if (isMissing(member.phone)) missingFields.push('<li><strong>Phone Number</strong></li>');
-        if (isMissing(fd.date_of_birth)) missingFields.push('<li><strong>Date of Birth</strong></li>');
-        if (isMissing(fd.gender)) missingFields.push('<li><strong>Gender</strong></li>');
-        if (isMissing(fd.marital_status)) missingFields.push('<li><strong>Marital Status</strong></li>');
-        if (isMissing(fd.id_number)) missingFields.push('<li><strong>National ID Number</strong></li>');
-        if (isMissing(fd.occupation)) missingFields.push('<li><strong>Occupation / Profession</strong></li>');
-        if (isMissing(fd.next_of_kin_name)) missingFields.push('<li><strong>Next of Kin Name</strong></li>');
-        if (isMissing(fd.next_of_kin_phone)) missingFields.push('<li><strong>Next of Kin Phone</strong></li>');
+        if (isMissing(getFieldVal('date_of_birth'))) missingFields.push('<li><strong>Date of Birth</strong></li>');
+        if (isMissing(getFieldVal('gender'))) missingFields.push('<li><strong>Gender</strong></li>');
+        if (isMissing(getFieldVal('marital_status'))) missingFields.push('<li><strong>Marital Status</strong></li>');
+        if (isMissing(getFieldVal('id_number'))) missingFields.push('<li><strong>National ID Number</strong></li>');
+        if (isMissing(getFieldVal('occupation'))) missingFields.push('<li><strong>Occupation / Profession</strong></li>');
+        if (isMissing(getFieldVal('next_of_kin_name'))) missingFields.push('<li><strong>Next of Kin Full Name</strong></li>');
+        if (isMissing(getFieldVal('next_of_kin_id'))) missingFields.push('<li><strong>Next of Kin ID Number</strong></li>');
+        if (isMissing(getFieldVal('next_of_kin_phone'))) missingFields.push('<li><strong>Next of Kin Phone Number</strong></li>');
+        if (isMissing(getFieldVal('next_of_kin_relationship'))) missingFields.push('<li><strong>Relationship to Next of Kin</strong></li>');
 
         const alertDiv = document.getElementById('profileIncompleteAlert');
         const missingList = document.getElementById('missingFieldsList');
@@ -1623,10 +1650,17 @@ window.loadMemberPaymentsAdmin = async function(memberId) {
 // DYNAMIC PROFILE FORM & EXPORTS
 // =============================================
 
-const defaultProfileFields = [
-    "Date of Birth", "Gender", "Marital Status", "National ID Number", 
-    "Branch", "Occupation", "Next of Kin Name", "Next of Kin Phone", 
-    "Dependants", "Dependant Count"
+const registrationSchema = [
+    { name: "Phone Number", key: "phone", type: "tel", required: true, isFieldOnMember: true },
+    { name: "Date of Birth", key: "date_of_birth", type: "date", required: true },
+    { name: "Gender", key: "gender", type: "select", options: ["Male", "Female"], required: true },
+    { name: "Marital Status", key: "marital_status", type: "select", options: ["Married", "Single", "Divorced", "Widowed"], required: true },
+    { name: "National ID Number", key: "id_number", type: "text", required: true },
+    { name: "Occupation / Profession", key: "occupation", type: "text", required: true },
+    { name: "Next of Kin Full Name", key: "next_of_kin_name", type: "text", required: true },
+    { name: "Next of Kin National ID Number", key: "next_of_kin_id", type: "text", required: true },
+    { name: "Next of Kin Phone Number", key: "next_of_kin_phone", type: "text", required: true },
+    { name: "Relationship to Next of Kin", key: "next_of_kin_relationship", type: "text", required: true }
 ];
 
 // Open the modal to allow members to edit their own profiles
@@ -1639,103 +1673,88 @@ window.openUpdateProfileModal = async function() {
     msg.style.display = 'none';
     document.getElementById('updateProfileModal').style.display = 'flex';
     
-    let fields = defaultProfileFields;
-    try {
-        const { data, error } = await client
-            .from('form_schema')
-            .select('fields')
-            .eq('key', 'profile_fields')
-            .single();
-            
-        if (!error && data && data.fields) {
-            fields = data.fields;
-        }
-    } catch (err) {
-        console.warn("Failed to load schema from database, using defaults.", err);
-    }
-    
-    // Always insert Phone Number as a standard field
-    let html = `
-        <div class="form-group" style="grid-column: span 2;">
-            <label style="font-weight: 600; color: #374151;">Phone Number</label>
-            <input type="tel" id="member_up_phone" required value="${currentMember.phone || ''}" placeholder="0712345678">
-        </div>
-    `;
-    
-    const fd = currentMember.form_details || {};
-    
-    fields.forEach((field, index) => {
-        let cleanName = '';
-        let type = 'text';
-        let options = [];
+    const getFieldVal = (canonicalKey) => {
+        const fd = currentMember.form_details || {};
+        if (canonicalKey === 'phone') return currentMember.phone;
         
-        if (typeof field === 'object' && field !== null) {
-            cleanName = field.name.trim();
-            type = field.type;
-            options = field.options || [];
-        } else {
-            cleanName = String(field).trim();
-            const lowerName = cleanName.toLowerCase();
-            if (lowerName.includes('gender')) {
-                type = 'select';
-                options = ['Male', 'Female', 'Other'];
-            } else if (lowerName.includes('marital')) {
-                type = 'select';
-                options = ['Single', 'Married', 'Divorced', 'Widowed'];
-            } else if (lowerName.includes('date of birth') || lowerName.includes('dob')) {
-                type = 'date';
-            } else if (lowerName.includes('yes/no') || lowerName.includes('confirm')) {
-                type = 'boolean';
+        const variations = {
+            'date_of_birth': ['date of birth', 'dob', 'date_of_birth'],
+            'gender': ['gender'],
+            'marital_status': ['marital status', 'marital_status'],
+            'id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
+            'occupation': ['occupation', 'profession', 'occupation/profession', 'occupation / profession'],
+            'next_of_kin_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
+            'next_of_kin_id': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
+            'next_of_kin_phone': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
+            'next_of_kin_relationship': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship']
+        };
+
+        const list = variations[canonicalKey] || [canonicalKey];
+        for (const key of Object.keys(fd)) {
+            const cleanKey = key.toLowerCase().trim();
+            if (list.includes(cleanKey)) {
+                return fd[key];
             }
         }
-        
-        const inputId = `member_up_${index}`;
-        const val = fd[cleanName] || '';
+        return undefined;
+    };
+
+    const isMissing = (val) => !val || String(val).trim() === '';
+
+    // Find which fields are missing
+    const missingSchemaFields = registrationSchema.filter(f => isMissing(getFieldVal(f.key)));
+    
+    // Determine fields to show. If some are missing, show only the missing ones.
+    // Otherwise show all fields.
+    const fieldsToShow = missingSchemaFields.length > 0 ? missingSchemaFields : registrationSchema;
+    
+    let html = '';
+    
+    if (missingSchemaFields.length > 0) {
+        html += `
+            <div style="grid-column: span 2; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem; font-weight: 600;">
+                    <i class="fa-solid fa-circle-exclamation"></i> Please fill in your missing profile details below to complete your registration.
+                </p>
+            </div>
+        `;
+    } else {
+        html += `
+            <div style="grid-column: span 2; background: #f0fdf4; border: 1px solid #dcfce7; border-left: 4px solid #16a34a; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                <p style="margin: 0; color: #166534; font-size: 0.9rem; font-weight: 600;">
+                    <i class="fa-solid fa-circle-check"></i> Your profile is complete! You can update your details below:
+                </p>
+            </div>
+        `;
+    }
+
+    fieldsToShow.forEach((field) => {
+        const val = getFieldVal(field.key) || '';
+        const inputId = `member_up_${field.key}`;
+        const reqAttr = field.required ? 'required' : '';
         
         let inputHtml = '';
-        
-        if (type === 'select') {
-            const selectOptions = options.map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('');
+        if (field.type === 'select') {
+            const selectOptions = field.options.map(opt => `<option value="${opt}" ${val === opt ? 'selected' : ''}>${opt}</option>`).join('');
             inputHtml = `
-                <select id="${inputId}">
+                <select id="${inputId}" ${reqAttr}>
                     <option value="">— Select —</option>
                     ${selectOptions}
                 </select>
             `;
-        } else if (type === 'boolean') {
-            const cleanVal = String(val).toLowerCase();
-            const isYes = cleanVal === 'yes' || cleanVal === 'true' || cleanVal === 'y';
-            const isNo = cleanVal === 'no' || cleanVal === 'false' || cleanVal === 'n';
-            inputHtml = `
-                <div style="display: flex; gap: 20px; align-items: center; padding: 10px 0;">
-                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                        <input type="radio" name="${inputId}_bool" id="${inputId}_yes" value="Yes" ${isYes ? 'checked' : ''}> Yes
-                    </label>
-                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                        <input type="radio" name="${inputId}_bool" id="${inputId}_no" value="No" ${isNo ? 'checked' : ''}> No
-                    </label>
-                </div>
-            `;
-        } else if (type === 'textarea') {
-            inputHtml = `<textarea id="${inputId}" rows="2" style="width: 100%; box-sizing: border-box; padding: 10px; border: 2px solid #e5e7eb; border-radius: 10px; font-family: 'Outfit', sans-serif;">${val}</textarea>`;
-        } else if (type === 'date') {
+        } else if (field.type === 'date') {
             let dateVal = val;
             if (val && !val.includes('-') && !isNaN(Date.parse(val))) {
                 dateVal = new Date(val).toISOString().split('T')[0];
             }
-            inputHtml = `<input type="date" id="${inputId}" value="${dateVal}">`;
+            inputHtml = `<input type="date" id="${inputId}" ${reqAttr} value="${dateVal}">`;
         } else {
-            inputHtml = `<input type="text" id="${inputId}" value="${val}">`;
+            inputHtml = `<input type="${field.type}" id="${inputId}" ${reqAttr} value="${val}" placeholder="${field.name}">`;
         }
         
-        let isConditional = cleanName.toLowerCase().startsWith('if ');
-        let cardStyle = isConditional 
-            ? 'background: #f8fafc; border-left: 4px solid var(--color-blue); padding: 15px; border-radius: 8px; margin-bottom: 5px; grid-column: span 2; box-sizing: border-box;' 
-            : `grid-column: ${fields.length === 1 ? 'span 2' : 'span 1'};`;
-            
         html += `
-            <div class="form-group" style="${cardStyle}">
-                <label style="font-weight: 600; color: ${isConditional ? 'var(--color-blue)' : '#374151'}">${cleanName}</label>
+            <div class="form-group" style="grid-column: span 1;">
+                <label style="font-weight: 600; color: #374151;">${field.name} ${field.required ? '<span style="color:red;">*</span>' : ''}</label>
                 ${inputHtml}
             </div>
         `;
@@ -1754,54 +1773,36 @@ if (updateProfileForm) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         
-        // Fetch current schema
-        let fields = defaultProfileFields;
-        try {
-            const { data } = await client
-                .from('form_schema')
-                .select('fields')
-                .eq('key', 'profile_fields')
-                .single();
-            if (data && data.fields) fields = data.fields;
-        } catch(err) {}
-        
-        const phone = document.getElementById('member_up_phone').value.trim();
-        const formDetails = {};
-        
-        fields.forEach((field, index) => {
-            let cleanName = '';
-            let type = 'text';
-            
-            if (typeof field === 'object' && field !== null) {
-                cleanName = field.name.trim();
-                type = field.type;
-            } else {
-                cleanName = String(field).trim();
-                const lowerName = cleanName.toLowerCase();
-                if (lowerName.includes('gender') || lowerName.includes('marital')) type = 'select';
-                else if (lowerName.includes('date') || lowerName.includes('dob')) type = 'date';
-                else if (lowerName.includes('yes/no') || lowerName.includes('confirm')) type = 'boolean';
-            }
-            
-            const inputId = `member_up_${index}`;
-            if (type === 'boolean') {
-                const yesEl = document.getElementById(`${inputId}_yes`);
-                const noEl = document.getElementById(`${inputId}_no`);
-                if (yesEl && yesEl.checked) {
-                    formDetails[cleanName] = 'Yes';
-                } else if (noEl && noEl.checked) {
-                    formDetails[cleanName] = 'No';
+        const targetKeys = {
+            'date_of_birth': 'Date of Birth',
+            'gender': 'Gender',
+            'marital_status': 'Marital Status',
+            'id_number': 'National ID Number',
+            'occupation': 'Occupation',
+            'next_of_kin_name': 'Next of Kin Full Name',
+            'next_of_kin_id': 'Next of Kin National ID Number',
+            'next_of_kin_phone': 'Next of Kin Phone Number',
+            'next_of_kin_relationship': 'Relationship to You'
+        };
+
+        const formDetails = { ...(currentMember.form_details || {}) };
+        let phone = currentMember.phone;
+
+        registrationSchema.forEach((field) => {
+            const inputEl = document.getElementById(`member_up_${field.key}`);
+            if (inputEl) {
+                const val = inputEl.value.trim();
+                if (field.isFieldOnMember) {
+                    if (field.key === 'phone') phone = val;
                 } else {
-                    formDetails[cleanName] = '';
-                }
-            } else {
-                const inputEl = document.getElementById(inputId);
-                if (inputEl) {
-                    formDetails[cleanName] = inputEl.value.trim();
+                    const dbKey = targetKeys[field.key];
+                    if (dbKey) {
+                        formDetails[dbKey] = val;
+                    }
                 }
             }
         });
-        
+
         try {
             const { error } = await client
                 .from('members')
@@ -1813,12 +1814,14 @@ if (updateProfileForm) {
                 
             if (error) throw error;
             
+            // Update local state
             currentMember.phone = phone;
             currentMember.form_details = formDetails;
             
             document.getElementById('updateProfileModal').style.display = 'none';
             alert('Your profile has been updated successfully!');
             
+            // Re-render and re-verify profile completeness
             checkUserAndLoadDashboard(currentSessionUser);
             
         } catch (err) {
