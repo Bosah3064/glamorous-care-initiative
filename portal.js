@@ -574,20 +574,67 @@ function setupAdminEventListeners() {
         });
     }
 
-    // Create Member Form (Note: this requires service_role key on a backend.
-    // For now, we show a placeholder message directing to the import script.)
+    // Create Member Form — uses the import_single_member RPC function
     const addMemberForm = document.getElementById('addMemberForm');
     if (addMemberForm) {
         addMemberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const msgDiv = document.getElementById('addMemberMsg');
+            const submitBtn = document.getElementById('btnCreateMember');
             
-            // Creating auth users requires the service_role key, which cannot be
-            // safely used in the browser. Show an informational message.
-            msgDiv.className = 'admin-msg error';
-            msgDiv.style.display = 'block';
-            msgDiv.textContent = 'Account creation requires server-side access. Please use the import script or contact the system administrator to add new members.';
+            const fullName = document.getElementById('newMemberName').value.trim();
+            const email = document.getElementById('newMemberEmail').value.trim().toLowerCase();
+            const phone = document.getElementById('newMemberPhone').value.trim();
+            const role = document.getElementById('newMemberRole').value;
+            const idNumber = document.getElementById('newMemberId').value.trim();
+            const branch = document.getElementById('newMemberBranch').value.trim();
             
+            if (!fullName || !email) {
+                msgDiv.className = 'admin-msg error';
+                msgDiv.style.display = 'block';
+                msgDiv.textContent = 'Name and email are required.';
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+            
+            const formDetails = {};
+            if (idNumber) formDetails.id_number = idNumber;
+            if (branch) formDetails.branch = branch;
+            
+            try {
+                const { data: newUserId, error } = await client.rpc('import_single_member', {
+                    p_full_name: fullName,
+                    p_email: email,
+                    p_phone: phone || null,
+                    p_status: 'active',
+                    p_form_details: formDetails
+                });
+                
+                if (error) throw error;
+                
+                // If a non-member role was selected, update it
+                if (role && role !== 'member') {
+                    await client.from('members').update({ role: role }).eq('id', newUserId);
+                }
+                
+                msgDiv.className = 'admin-msg success';
+                msgDiv.style.display = 'block';
+                msgDiv.innerHTML = `<i class="fa-solid fa-check-circle"></i> Account created for <strong>${fullName}</strong>! Default password: <strong>12345678</strong>`;
+                addMemberForm.reset();
+                
+                // Refresh the member lists
+                loadAdminData();
+                
+            } catch (err) {
+                msgDiv.className = 'admin-msg error';
+                msgDiv.style.display = 'block';
+                msgDiv.textContent = 'Error: ' + err.message;
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
             setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 8000);
         });
     }
@@ -1022,6 +1069,11 @@ if (editPaymentForm) {
             msg.className = 'auth-error';
         } else {
             document.getElementById('editPaymentModal').style.display = 'none';
+            // Refresh the admin payment viewer if a member is selected
+            const viewSelect = document.getElementById('viewPaymentsMember');
+            if (viewSelect && viewSelect.value) {
+                window.loadMemberPaymentsAdmin(viewSelect.value);
+            }
             // Refresh payments list for current user
             checkUserAndLoadDashboard(currentSessionUser);
         }
@@ -1030,6 +1082,54 @@ if (editPaymentForm) {
         btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Payment Update';
     });
 }
+
+// Delete a payment record
+window.deletePaymentRecord = async function(paymentId) {
+    // If called from modal without an argument, get the ID from the form
+    if (!paymentId) {
+        paymentId = document.getElementById('editPaymentId').value;
+    }
+    
+    if (!paymentId) return;
+    
+    if (!confirm('Are you sure you want to permanently delete this payment record? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const { error } = await client.from('payments').delete().eq('id', paymentId);
+        
+        if (error) {
+            alert('Error deleting payment: ' + error.message);
+            return;
+        }
+        
+        // Remove from local cache
+        if (window.allPayments) {
+            window.allPayments = window.allPayments.filter(p => p.id !== paymentId);
+        }
+        
+        // Close the modal if it's open
+        const modal = document.getElementById('editPaymentModal');
+        if (modal) modal.style.display = 'none';
+        
+        // Refresh the admin payment viewer if a member is selected
+        const viewSelect = document.getElementById('viewPaymentsMember');
+        if (viewSelect && viewSelect.value) {
+            window.loadMemberPaymentsAdmin(viewSelect.value);
+        }
+        
+        // Also refresh the main dashboard
+        if (currentSessionUser) {
+            checkUserAndLoadDashboard(currentSessionUser);
+        }
+        
+        alert('Payment record deleted successfully.');
+    } catch (err) {
+        console.error('Delete payment error:', err);
+        alert('Error: ' + err.message);
+    }
+};
 
 // =============================================
 // EXCEL BULK IMPORT LOGIC
@@ -1369,9 +1469,10 @@ window.loadMemberPaymentsAdmin = async function(memberId) {
                         <td>${statusBadge}</td>
                         <td style="font-family:monospace; color:#6b7280;">${p.reference || '-'}</td>
                         <td>
-                            <button onclick="openEditPaymentModal('${p.id}')" style="background:var(--color-purple); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; gap:5px;">
-                                <i class="fa-solid fa-pen"></i> Edit
-                            </button>
+                            <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                                <button onclick="openEditPaymentModal('${p.id}')" style="background:var(--color-purple); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button onclick="deletePaymentRecord('${p.id}')" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-trash"></i> Del</button>
+                            </div>
                         </td>
                     </tr>
                 `;
