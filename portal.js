@@ -638,6 +638,75 @@ function setupAdminEventListeners() {
             setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 8000);
         });
     }
+
+    // Configure Custom Form Fields Event Listener
+    const btnProcessSchema = document.getElementById('btnProcessSchema');
+    const configSchemaFile = document.getElementById('configSchemaFile');
+    const configMsg = document.getElementById('configMsg');
+    
+    if (btnProcessSchema && configSchemaFile) {
+        btnProcessSchema.addEventListener('click', () => {
+            if (!configSchemaFile.files || configSchemaFile.files.length === 0) {
+                configMsg.textContent = "Please select an Excel or CSV file first.";
+                configMsg.className = "admin-msg error";
+                configMsg.style.display = "block";
+                return;
+            }
+
+            btnProcessSchema.disabled = true;
+            btnProcessSchema.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            
+            const file = configSchemaFile.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    
+                    if (json.length === 0) {
+                        throw new Error("The selected sheet is empty.");
+                    }
+
+                    const headers = Object.keys(json[0]);
+                    const ignoreHeaders = ['email', 'name', 'phone', 'full name', 'phone number', 'email address'];
+                    const customFields = headers.filter(h => {
+                        const clean = h.trim().toLowerCase();
+                        return !ignoreHeaders.some(ignore => clean.includes(ignore)) && clean !== '';
+                    });
+
+                    if (customFields.length === 0) {
+                        throw new Error("No custom fields (columns) found in the Excel sheet.");
+                    }
+
+                    const { error } = await client.from('form_schema').upsert({
+                        key: 'profile_fields',
+                        fields: customFields,
+                        updated_at: new Date().toISOString()
+                    });
+
+                    if (error) throw error;
+
+                    configMsg.className = "admin-msg success";
+                    configMsg.style.display = "block";
+                    configMsg.innerHTML = `<i class="fa-solid fa-check-circle"></i> Successfully configured ${customFields.length} custom fields!`;
+                    configSchemaFile.value = '';
+                } catch (err) {
+                    console.error(err);
+                    configMsg.textContent = "Error setting configuration: " + err.message;
+                    configMsg.className = "admin-msg error";
+                    configMsg.style.display = "block";
+                } finally {
+                    btnProcessSchema.disabled = false;
+                    btnProcessSchema.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Configure Fields';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
 }
 
 // =============================================
@@ -1485,5 +1554,308 @@ window.loadMemberPaymentsAdmin = async function(memberId) {
     } catch (err) {
         console.error("Error loading member payments:", err);
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error loading payments: ${err.message}</td></tr>`;
+    }
+};
+
+// =============================================
+// DYNAMIC PROFILE FORM & EXPORTS
+// =============================================
+
+const defaultProfileFields = [
+    "Date of Birth", "Gender", "Marital Status", "National ID Number", 
+    "Branch", "Occupation", "Next of Kin Name", "Next of Kin Phone", 
+    "Dependants", "Dependant Count"
+];
+
+// Open the modal to allow members to edit their own profiles
+window.openUpdateProfileModal = async function() {
+    const container = document.getElementById('dynamicProfileFieldsContainer');
+    const msg = document.getElementById('updateProfileMsg');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="grid-column: span 2; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Loading form fields...</div>';
+    msg.style.display = 'none';
+    document.getElementById('updateProfileModal').style.display = 'flex';
+    
+    let fields = defaultProfileFields;
+    try {
+        const { data, error } = await client
+            .from('form_schema')
+            .select('fields')
+            .eq('key', 'profile_fields')
+            .single();
+            
+        if (!error && data && data.fields) {
+            fields = data.fields;
+        }
+    } catch (err) {
+        console.warn("Failed to load schema from database, using defaults.", err);
+    }
+    
+    // Always insert Phone Number as a standard field
+    let html = `
+        <div class="form-group" style="grid-column: span 2;">
+            <label>Phone Number</label>
+            <input type="tel" id="member_up_phone" required value="${currentMember.phone || ''}" placeholder="0712345678">
+        </div>
+    `;
+    
+    const fd = currentMember.form_details || {};
+    
+    fields.forEach((field, index) => {
+        const cleanName = field.trim();
+        const inputId = `member_up_${index}`;
+        const val = fd[cleanName] || '';
+        
+        let inputHtml = '';
+        const lowerName = cleanName.toLowerCase();
+        
+        if (lowerName.includes('gender')) {
+            inputHtml = `
+                <select id="${inputId}">
+                    <option value="">— Select —</option>
+                    <option value="Male" ${val === 'Male' ? 'selected' : ''}>Male</option>
+                    <option value="Female" ${val === 'Female' ? 'selected' : ''}>Female</option>
+                    <option value="Other" ${val === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+            `;
+        } else if (lowerName.includes('marital')) {
+            inputHtml = `
+                <select id="${inputId}">
+                    <option value="">— Select —</option>
+                    <option value="Single" ${val === 'Single' ? 'selected' : ''}>Single</option>
+                    <option value="Married" ${val === 'Married' ? 'selected' : ''}>Married</option>
+                    <option value="Divorced" ${val === 'Divorced' ? 'selected' : ''}>Divorced</option>
+                    <option value="Widowed" ${val === 'Widowed' ? 'selected' : ''}>Widowed</option>
+                </select>
+            `;
+        } else if (lowerName.includes('date of birth') || lowerName.includes('dob')) {
+            // Check if val is formatted as YYYY-MM-DD
+            let dateVal = val;
+            if (val && !val.includes('-') && !isNaN(Date.parse(val))) {
+                dateVal = new Date(val).toISOString().split('T')[0];
+            }
+            inputHtml = `<input type="date" id="${inputId}" value="${dateVal}">`;
+        } else if (lowerName.includes('phone') || lowerName.includes('number') || lowerName.includes('count')) {
+            inputHtml = `<input type="text" id="${inputId}" value="${val}">`;
+        } else {
+            inputHtml = `<input type="text" id="${inputId}" value="${val}">`;
+        }
+        
+        html += `
+            <div class="form-group" style="grid-column: ${fields.length === 1 ? 'span 2' : 'span 1'};">
+                <label>${cleanName}</label>
+                ${inputHtml}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+};
+
+// Handle submission of the update profile form
+const updateProfileForm = document.getElementById('updateProfileForm');
+if (updateProfileForm) {
+    updateProfileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('updateProfileMsg');
+        const submitBtn = updateProfileForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        
+        // Fetch current schema to map inputs back to keys
+        let fields = defaultProfileFields;
+        try {
+            const { data } = await client
+                .from('form_schema')
+                .select('fields')
+                .eq('key', 'profile_fields')
+                .single();
+            if (data && data.fields) fields = data.fields;
+        } catch(err) {}
+        
+        const phone = document.getElementById('member_up_phone').value.trim();
+        const formDetails = {};
+        
+        fields.forEach((field, index) => {
+            const cleanName = field.trim();
+            const inputEl = document.getElementById(`member_up_${index}`);
+            if (inputEl) {
+                formDetails[cleanName] = inputEl.value.trim();
+            }
+        });
+        
+        try {
+            const { error } = await client
+                .from('members')
+                .update({
+                    phone: phone || null,
+                    form_details: formDetails
+                })
+                .eq('id', currentMember.id);
+                
+            if (error) throw error;
+            
+            // Update local state
+            currentMember.phone = phone;
+            currentMember.form_details = formDetails;
+            
+            document.getElementById('updateProfileModal').style.display = 'none';
+            alert('Your profile has been updated successfully!');
+            
+            // Re-render and re-verify profile completeness
+            checkUserAndLoadDashboard(currentSessionUser);
+            
+        } catch (err) {
+            msg.textContent = err.message;
+            msg.style.display = 'block';
+            msg.className = 'auth-error';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Profile Details';
+        }
+    });
+}
+
+// Export all members' data to an Excel file
+window.exportMembersToExcel = async function() {
+    try {
+        const { data: members, error } = await client
+            .from('members')
+            .select('*')
+            .order('full_name');
+            
+        if (error) throw error;
+        
+        const flattened = members.map(m => {
+            const row = {
+                "Full Name": m.full_name,
+                "Email": m.email,
+                "Phone": m.phone || '',
+                "Role": m.role,
+                "Status": m.status,
+                "Join Date": m.join_date || ''
+            };
+            
+            // Inline all custom form details
+            if (m.form_details) {
+                for (const key in m.form_details) {
+                    row[key] = m.form_details[key] || '';
+                }
+            }
+            
+            return row;
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(flattened);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "GCI Members");
+        XLSX.writeFile(workbook, "GCI_Members_Data.xlsx");
+        
+    } catch (err) {
+        alert("Export failed: " + err.message);
+    }
+};
+
+// Export all members' data as a printable PDF report
+window.exportMembersToPDF = async function() {
+    try {
+        const { data: members, error } = await client
+            .from('members')
+            .select('*')
+            .order('full_name');
+            
+        if (error) throw error;
+        
+        const printWindow = window.open('', '_blank');
+        
+        let tableRows = '';
+        members.forEach(m => {
+            const phone = m.phone || 'N/A';
+            const statusLabel = m.status === 'active' ? 'Active' : m.status;
+            const branch = m.form_details?.Branch || m.form_details?.branch || 'N/A';
+            const idNo = m.form_details?.['National ID Number'] || m.form_details?.id_number || 'N/A';
+            const occupation = m.form_details?.Occupation || m.form_details?.occupation || 'N/A';
+            
+            tableRows += `
+                <tr>
+                    <td><strong>${m.full_name}</strong></td>
+                    <td>${m.email}</td>
+                    <td>${phone}</td>
+                    <td>${idNo}</td>
+                    <td>${branch}</td>
+                    <td>${occupation}</td>
+                    <td>${m.role.toUpperCase()}</td>
+                    <td><span class="status-${m.status}">${statusLabel}</span></td>
+                </tr>
+            `;
+        });
+        
+        const html = `
+            <html>
+            <head>
+                <title>GCI Members Directory Report</title>
+                <style>
+                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; margin: 30px; }
+                    .header { text-align: center; border-bottom: 3px double #3b82f6; padding-bottom: 20px; margin-bottom: 30px; }
+                    .title { font-size: 24px; font-weight: bold; color: #1e3a8a; margin: 0; }
+                    .subtitle { font-size: 14px; color: #555; margin: 5px 0 0 0; }
+                    .meta { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-top: 15px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                    th { background-color: #f3f4f6; color: #1e3a8a; font-weight: bold; }
+                    tr:nth-child(even) { background-color: #fafafa; }
+                    .status-active { color: #16a34a; font-weight: bold; }
+                    .status-probation { color: #d97706; font-weight: bold; }
+                    @media print {
+                        body { margin: 15px; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="title">GLAMOROUS CARE INITIATIVE</div>
+                    <div class="subtitle">Official Members Directory & Records Report</div>
+                    <div class="meta">
+                        <span><strong>Total Members:</strong> ${members.length}</span>
+                        <span><strong>Generated On:</strong> ${new Date().toLocaleDateString('en-KE')}</span>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Email Address</th>
+                            <th>Phone</th>
+                            <th>ID Number</th>
+                            <th>Branch</th>
+                            <th>Occupation</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+                    This is an officially generated system report for GCI Administration. &copy; ${new Date().getFullYear()} GCI
+                </div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        setTimeout(function() { window.close(); }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+        
+    } catch (err) {
+        alert("Export failed: " + err.message);
     }
 };
