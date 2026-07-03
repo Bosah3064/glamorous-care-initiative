@@ -1974,3 +1974,180 @@ window.exportMembersToPDF = async function() {
         alert("Export failed: " + err.message);
     }
 };
+
+// =============================================
+// FIX: Scroll to top when any modal opens
+// =============================================
+(function fixModalScroll() {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const el = mutation.target;
+                if (el.classList.contains('modal-overlay') && el.style.display === 'flex') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    el.scrollTop = 0;
+                }
+            }
+        });
+    });
+    
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        observer.observe(modal, { attributes: true });
+    });
+    
+    // Also fix the update profile modal
+    const updateModal = document.getElementById('updateProfileModal');
+    if (updateModal) {
+        observer.observe(updateModal, { attributes: true });
+    }
+})();
+
+// =============================================
+// RELATIVE CARD ADD/REMOVE
+// =============================================
+let currentRelativeCount = 1;
+
+window.addRelativeCard = function() {
+    if (currentRelativeCount >= 3) return;
+    currentRelativeCount++;
+    document.getElementById('relative' + currentRelativeCount + 'Card').style.display = 'block';
+    
+    if (currentRelativeCount >= 3) {
+        document.getElementById('btnAddRelative').style.display = 'none';
+    }
+    document.getElementById('btnRemoveRelative').style.display = 'inline-flex';
+};
+
+window.removeRelativeCard = function() {
+    if (currentRelativeCount <= 1) return;
+    document.getElementById('relative' + currentRelativeCount + 'Card').style.display = 'none';
+    // Clear the hidden card's fields
+    document.getElementById('rel' + currentRelativeCount + 'Type').value = '';
+    document.getElementById('rel' + currentRelativeCount + 'Name').value = '';
+    document.getElementById('rel' + currentRelativeCount + 'Id').value = '';
+    document.getElementById('rel' + currentRelativeCount + 'Phone').value = '';
+    currentRelativeCount--;
+    
+    if (currentRelativeCount <= 1) {
+        document.getElementById('btnRemoveRelative').style.display = 'none';
+    }
+    document.getElementById('btnAddRelative').style.display = 'inline-flex';
+};
+
+// =============================================
+// REGISTRATION FORM HANDLER
+// =============================================
+const registrationForm = document.getElementById('registrationForm');
+if (registrationForm) {
+    registrationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msgDiv = document.getElementById('registerMsg');
+        const submitBtn = document.getElementById('btnSubmitRegistration');
+        
+        const fullName = document.getElementById('regFullName').value.trim();
+        const email = document.getElementById('regEmail').value.trim().toLowerCase();
+        const phone = document.getElementById('regPhone').value.trim();
+        const dob = document.getElementById('regDob').value;
+        const gender = document.getElementById('regGender').value;
+        const maritalStatus = document.getElementById('regMaritalStatus').value;
+        const idNumber = document.getElementById('regIdNumber').value.trim();
+        const occupation = document.getElementById('regOccupation').value.trim();
+        
+        // Dependants
+        const hasDependants = document.querySelector('input[name="regHasDependants"]:checked')?.value || 'No';
+        const depTypes = Array.from(document.querySelectorAll('input[name="regDepTypes"]:checked')).map(cb => cb.value);
+        
+        // Relatives
+        const relatives = [];
+        for (let i = 1; i <= 3; i++) {
+            const card = document.getElementById('relative' + i + 'Card');
+            if (card && card.style.display !== 'none') {
+                const relType = document.getElementById('rel' + i + 'Type').value;
+                const relName = document.getElementById('rel' + i + 'Name').value.trim();
+                const relId = document.getElementById('rel' + i + 'Id').value.trim();
+                const relPhone = document.getElementById('rel' + i + 'Phone').value.trim();
+                if (relName || relType) {
+                    relatives.push({
+                        relationship: relType,
+                        full_name: relName,
+                        id_number: relId,
+                        phone: relPhone
+                    });
+                }
+            }
+        }
+        
+        // Next of Kin
+        const nokName = document.getElementById('regNokName').value.trim();
+        const nokId = document.getElementById('regNokId').value.trim();
+        const nokPhone = document.getElementById('regNokPhone').value.trim();
+        const nokRelationship = document.getElementById('regNokRelationship').value.trim();
+        
+        if (!fullName || !email || !phone) {
+            msgDiv.className = 'admin-msg error';
+            msgDiv.style.display = 'block';
+            msgDiv.textContent = 'Please fill in all required fields.';
+            msgDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+        
+        const formDetails = {
+            'Date of Birth': dob,
+            'Gender': gender,
+            'Marital Status': maritalStatus,
+            'National ID Number': idNumber,
+            'Occupation': occupation,
+            'Has Dependants': hasDependants,
+            'Dependant Types': depTypes.join(', '),
+            'Relatives': relatives,
+            'Next of Kin Full Name': nokName,
+            'Next of Kin National ID Number': nokId,
+            'Next of Kin Phone Number': nokPhone,
+            'Relationship to You': nokRelationship
+        };
+        
+        try {
+            const { data: newUserId, error } = await client.rpc('import_single_member', {
+                p_full_name: fullName,
+                p_email: email,
+                p_phone: phone,
+                p_status: 'active',
+                p_form_details: formDetails
+            });
+            
+            if (error) throw error;
+            
+            msgDiv.className = 'admin-msg success';
+            msgDiv.style.display = 'block';
+            msgDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 2rem; color: #16a34a; display: block; margin-bottom: 10px;"></i>
+                    <h4 style="margin: 0 0 10px; color: #166534;">Registration Successful!</h4>
+                    <p style="margin: 0 0 5px;">Welcome to Glamorous Care Initiative, <strong>${fullName}</strong>!</p>
+                    <p style="margin: 0 0 15px;">Your account has been created. You can now log in using:</p>
+                    <div style="background: #f0fdf4; padding: 15px; border-radius: 10px; display: inline-block; text-align: left;">
+                        <p style="margin: 0 0 5px;"><strong>Email:</strong> ${email}</p>
+                        <p style="margin: 0;"><strong>Password:</strong> 12345678</p>
+                    </div>
+                    <p style="margin: 15px 0 0; font-size: 0.85rem; color: #6b7280;">You will be asked to change your password on first login.</p>
+                    <a href="#portal" class="btn btn-primary" style="margin-top: 15px; display: inline-block;"><i class="fa-solid fa-right-to-bracket"></i> Go to Login</a>
+                </div>
+            `;
+            registrationForm.reset();
+            registrationForm.style.display = 'none';
+            msgDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+        } catch (err) {
+            msgDiv.className = 'admin-msg error';
+            msgDiv.style.display = 'block';
+            msgDiv.textContent = 'Registration Error: ' + err.message;
+        }
+        
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Registration';
+        msgDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+}
