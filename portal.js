@@ -1010,6 +1010,14 @@ function setupSessionResumeHandler() {
     });
 }
 
+// Close modal helper: hides overlay and removes fullscreen class
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = 'none';
+    el.classList.remove('fullscreen');
+}
+
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         await client.auth.signOut();
@@ -1314,7 +1322,7 @@ if (editMemberForm) {
             msg.style.display = 'block';
             msg.className = 'auth-error';
         } else {
-            document.getElementById('editMemberModal').style.display = 'none';
+            closeModal('editMemberModal');
             // Refresh list
             loadAdminData();
         }
@@ -1398,7 +1406,7 @@ if (editPaymentForm) {
             msg.style.display = 'block';
             msg.className = 'auth-error';
         } else {
-            document.getElementById('editPaymentModal').style.display = 'none';
+            closeModal('editPaymentModal');
             // Refresh the admin payment viewer if a member is selected
             const viewSelect = document.getElementById('viewPaymentsMember');
             if (viewSelect && viewSelect.value) {
@@ -1440,8 +1448,7 @@ window.deletePaymentRecord = async function(paymentId) {
         }
         
         // Close the modal if it's open
-        const modal = document.getElementById('editPaymentModal');
-        if (modal) modal.style.display = 'none';
+        closeModal('editPaymentModal');
         
         // Refresh the admin payment viewer if a member is selected
         const viewSelect = document.getElementById('viewPaymentsMember');
@@ -2101,7 +2108,7 @@ if (updateProfileForm) {
             }
             
             // Close modal
-            document.getElementById('updateProfileModal').style.display = 'none';
+            closeModal('updateProfileModal');
             alert('Your profile has been updated successfully!');
             
             // Re-render the full dashboard with fresh data
