@@ -32,8 +32,9 @@ const profileJoinDate = document.getElementById('profileJoinDate');
 const profileAvatar = document.getElementById('profileAvatar');
 const profileDetailsGrid = document.getElementById('profileDetailsGrid');
 const paymentsTableBody = document.getElementById('paymentsTableBody');
-const totalContributions = document.getElementById('totalContributions');
-const totalPayments = document.getElementById('totalPayments');
+const totalSavings = document.getElementById('totalSavings');
+const paidOutSavings = document.getElementById('paidOutSavings');
+const registrationStatus = document.getElementById('registrationStatus');
 const pendingPayments = document.getElementById('pendingPayments');
 
 // Admin Panel
@@ -435,21 +436,30 @@ function renderPayments(payments) {
                 </td>
             </tr>
         `;
-        totalContributions.textContent = 'KES 0';
-        totalPayments.textContent = '0';
-        pendingPayments.textContent = '0';
+        if (totalSavings) totalSavings.textContent = 'KES 0';
+        if (paidOutSavings) paidOutSavings.textContent = 'KES 0';
+        if (registrationStatus) registrationStatus.textContent = 'Unpaid';
+        if (pendingPayments) pendingPayments.textContent = '0';
         return;
     }
 
-    let totalPaid = 0;
-    let paidCount = 0;
+    let totalSavedAmount = 0;
+    let totalPaidOutAmount = 0;
+    let isRegistered = false;
     let pendingCount = 0;
 
     paymentsTableBody.innerHTML = payments.map(payment => {
         if (payment.status === 'paid') {
-            totalPaid += payment.amount;
-            paidCount++;
-        } else {
+            if (payment.payment_type === 'registration') {
+                isRegistered = true;
+            } else if (payment.payment_type === 'saving' || !payment.payment_type) {
+                if (payment.payout_status === 'paid_out') {
+                    totalPaidOutAmount += payment.amount;
+                } else {
+                    totalSavedAmount += payment.amount;
+                }
+            }
+        } else if (payment.status === 'pending') {
             pendingCount++;
         }
 
@@ -470,7 +480,7 @@ function renderPayments(payments) {
         return `
             <tr>
                 <td>${payment.month}</td>
-                <td><strong>KES ${payment.amount.toLocaleString()}</strong></td>
+                <td><strong>KES ${payment.amount.toLocaleString()}</strong><br><small style="color: #6b7280;">${payment.payment_type === 'registration' ? 'Registration' : (payment.payout_status === 'paid_out' ? 'Paid Out' : 'Saving')}</small></td>
                 <td>${formatDate(payment.payment_date)}</td>
                 <td><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</span></td>
                 <td>${payment.reference || '—'}</td>
@@ -479,9 +489,18 @@ function renderPayments(payments) {
         `;
     }).join('');
 
-    totalContributions.textContent = `KES ${totalPaid.toLocaleString()}`;
-    totalPayments.textContent = paidCount.toString();
-    pendingPayments.textContent = pendingCount.toString();
+    if (totalSavings) totalSavings.textContent = `KES ${totalSavedAmount.toLocaleString()}`;
+    if (paidOutSavings) paidOutSavings.textContent = `KES ${totalPaidOutAmount.toLocaleString()}`;
+    if (registrationStatus) {
+        if (isRegistered) {
+            registrationStatus.textContent = 'Paid ?';
+            registrationStatus.style.color = 'var(--color-green)';
+        } else {
+            registrationStatus.textContent = 'Unpaid';
+            registrationStatus.style.color = 'var(--color-orange)';
+        }
+    }
+    if (pendingPayments) pendingPayments.textContent = pendingCount.toString();
 }
 
 // =============================================
@@ -620,6 +639,8 @@ function setupAdminEventListeners() {
                 month: document.getElementById('paymentMonth').value,
                 payment_date: document.getElementById('paymentDate').value,
                 status: document.getElementById('paymentStatus').value,
+                payment_type: document.getElementById('paymentType').value,
+                payout_status: document.getElementById('paymentPayoutStatus').value,
                 reference: document.getElementById('paymentRef').value || null,
                 added_by: currentMember ? currentMember.role : 'admin'
             };
@@ -955,6 +976,10 @@ async function checkAuth() {
     if (session) {
         currentSessionUser = session.user;
         await checkUserAndLoadDashboard(session.user);
+        
+        // Hide registration link if user is logged in
+        const regLinks = document.querySelectorAll('a[href="register.html"], a[href="#register"]');
+        regLinks.forEach(link => link.style.display = 'none');
     }
 }
 
@@ -1208,6 +1233,8 @@ window.openEditPaymentModal = function(id) {
     }
     document.getElementById('editPaymentDate').value = dateStr;
     document.getElementById('editPaymentStatus').value = payment.status;
+    document.getElementById('editPaymentType').value = payment.payment_type || 'saving';
+    document.getElementById('editPaymentPayoutStatus').value = payment.payout_status || 'accumulating';
     document.getElementById('editPaymentRef').value = payment.reference || '';
     
     document.getElementById('editPaymentMsg').style.display = 'none';
@@ -1229,6 +1256,8 @@ if (editPaymentForm) {
             month: document.getElementById('editPaymentMonth').value,
             payment_date: document.getElementById('editPaymentDate').value,
             status: document.getElementById('editPaymentStatus').value,
+            payment_type: document.getElementById('editPaymentType').value,
+            payout_status: document.getElementById('editPaymentPayoutStatus').value,
             reference: document.getElementById('editPaymentRef').value
         };
         
@@ -1908,11 +1937,8 @@ if (updateProfileForm) {
             if (field.isFieldOnMember) {
                 if (field.key === 'phone') phone = val;
             } else {
-                // Only update if the user actually entered something (don't overwrite with blank)
-                if (val !== '') {
-                    // Always save using the CANONICAL key
-                    mergedFormDetails[field.key] = val;
-                }
+                // Always save using the CANONICAL key, even if empty (allows clearing corrupted data)
+                mergedFormDetails[field.key] = val;
             }
         });
 

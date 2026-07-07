@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glamorous Care Initiative — Caring in Love, United as One</title>
+    <meta name="description" content="Glamorous Care Initiative is a welfare organization dedicated to caring for its members and bringing people together in love and unity.">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+</head>
+<body>
+    <header class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="logo-img">
+        </a>
+        <button class="mobile-toggle" aria-label="Toggle navigation" id="mobileToggle">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html" class="nav-link active">Home</a>
+            <a href="about.html" class="nav-link">About Us</a>
+            <a href="leadership.html" class="nav-link">Leadership Team</a>
+            <a href="activities.html" class="nav-link">Activities</a>
+            <a href="membership.html" class="nav-link">Membership</a>
+            <a href="register.html" class="nav-link">Register</a>
+            <a href="gallery.html" class="nav-link">Gallery</a>
+            <a href="news.html" class="nav-link">News & Events</a>
+            <a href="contact.html" class="nav-link">Contact Us</a>
+            <a href="portal.html" class="nav-link nav-portal"><i class="fa-solid fa-circle-user"></i> My Portal</a>
+        </nav>
+    </header>
+
+    <main id="main-content">
+<section id="gallery" class="page active">
+            <div class="container section-header">
+                <h2>Gallery</h2>
+                <div class="divider"></div>
+                <p>Moments captured from our various events and activities.</p>
+            </div>
+            <div class="container gallery-grid">
+                <div class="gallery-item has-img">
+                    <img src="assets/logo.png" alt="GCI Logo" class="gallery-img">
+                    <div class="gallery-caption">Glamorous Care Initiative</div>
+                </div>
+                <div class="gallery-item has-img">
+                    <img src="assets/chairman.jpg" alt="Eliab Omiti - Chairman" class="gallery-img">
+                    <div class="gallery-caption">Eliab Omiti — Chairman</div>
+                </div>
+                <div class="gallery-item has-img">
+                    <img src="assets/vice-chair.jpg" alt="Damaris Mokeira - Vice Chair" class="gallery-img">
+                    <div class="gallery-caption">Damaris Mokeira — Vice Chair</div>
+                </div>
+                <div class="gallery-item has-img">
+                    <img src="assets/treasurer.jpg" alt="Millicent Kerubo - Treasurer" class="gallery-img">
+                    <div class="gallery-caption">Millicent Kerubo — Treasurer/Secretary</div>
+                </div>
+                <div class="gallery-item has-img">
+                    <img src="assets/gallery4.jpg" alt="GCI Member" class="gallery-img">
+                    <div class="gallery-caption">GCI Member</div>
+                </div>
+                <div class="gallery-item bg-gray"><span>More Coming Soon</span></div>
+            </div>
+        </section>
+</main>
+
+    <footer id="footer">
+        <div class="container footer-content">
+            <div class="footer-brand">
+                <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="footer-logo">
+                <p>"Caring in Love, United as One"</p>
+            </div>
+            <div class="footer-links">
+                <h4>Quick Links</h4>
+                <a href="#about">About Us</a>
+                <a href="#membership">Membership</a>
+                <a href="#register">Register</a>
+                <a href="#portal">Member Portal</a>
+                <a href="#activities">Activities</a>
+                <a href="#contact">Contact Us</a>
+            </div>
+            <div class="footer-socials">
+                <h4>Follow Us</h4>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Glamorous Care Initiative. All rights reserved.</p>
+            <p class="designer-credit">Designed by <strong>LameckTech</strong> | <i class="fa-solid fa-phone"></i> 0790397468</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Export Libraries (SheetJS for Excel; docx is lazy-loaded on demand) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="app.js?v=1.2"></script>
+    <!-- Version 4.4.0 - Lazy-load heavy export libs -->
+    <script src="portal.js?v=4.4"></script>
+</body>
+</html>

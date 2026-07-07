@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glamorous Care Initiative — Caring in Love, United as One</title>
+    <meta name="description" content="Glamorous Care Initiative is a welfare organization dedicated to caring for its members and bringing people together in love and unity.">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+</head>
+<body>
+    <header class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="logo-img">
+        </a>
+        <button class="mobile-toggle" aria-label="Toggle navigation" id="mobileToggle">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html" class="nav-link active">Home</a>
+            <a href="about.html" class="nav-link">About Us</a>
+            <a href="leadership.html" class="nav-link">Leadership Team</a>
+            <a href="activities.html" class="nav-link">Activities</a>
+            <a href="membership.html" class="nav-link">Membership</a>
+            <a href="register.html" class="nav-link">Register</a>
+            <a href="gallery.html" class="nav-link">Gallery</a>
+            <a href="news.html" class="nav-link">News & Events</a>
+            <a href="contact.html" class="nav-link">Contact Us</a>
+            <a href="portal.html" class="nav-link nav-portal"><i class="fa-solid fa-circle-user"></i> My Portal</a>
+        </nav>
+    </header>
+
+    <main id="main-content">
+<section id="leadership" class="page active">
+            <div class="container section-header">
+                <h2>Leadership Team</h2>
+                <div class="divider"></div>
+                <p>Meet the dedicated office bearers guiding our initiative forward. Our leaders are elected by members through a democratic process and serve a fixed term of one year.</p>
+            </div>
+
+            <!-- Leadership Carousel -->
+            <div class="container carousel-container">
+                <div class="carousel-track-wrapper">
+                    <div class="carousel-track" id="leadershipCarousel">
+                        <!-- Leader 1: Chairman -->
+                        <div class="carousel-slide">
+                            <div class="leader-card featured">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/chairman.jpg" alt="Eliab Omiti - Chairman" class="leader-photo">
+                                    <div class="leader-badge"><i class="fa-solid fa-crown"></i></div>
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Eliab Omiti</h3>
+                                    <span class="leader-role">Chairman</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> A true leader does not create followers — he creates more leaders. Together, we are building something beautiful that will outlast us all. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Provides executive leadership to the Group, presides over all meetings of the Executive Committee and General Meetings, organizes meeting agendas, encourages participation by all members, and represents the Group at external meetings.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leader 2: Vice Chair -->
+                        <div class="carousel-slide">
+                            <div class="leader-card">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/vice-chair.jpg" alt="Damaris Mokeira - Vice Chair" class="leader-photo">
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Damaris Mokeira</h3>
+                                    <span class="leader-role">Vice Chairperson</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Strength is not in standing alone, but in lifting each other up. When one of us rises, we all rise. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Performs duties assigned by the Chairman and acts in his absence to ensure continuity of leadership for the Group.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leader 3: Treasurer/Secretary -->
+                        <div class="carousel-slide">
+                            <div class="leader-card">
+                                <div class="leader-photo-wrapper">
+                                    <img src="assets/treasurer.jpg" alt="Millicent Kerubo - Treasurer/Secretary" class="leader-photo">
+                                </div>
+                                <div class="leader-details">
+                                    <h3>Millicent Kerubo</h3>
+                                    <span class="leader-role">Treasurer / Secretary</span>
+                                    <p class="leader-quote"><i class="fa-solid fa-quote-left"></i> Every coin we steward is a seed of hope. Faithfulness in the little things is what builds lasting trust. <i class="fa-solid fa-quote-right"></i></p>
+                                    <p>Manages all Group finances, maintains proper books of accounts, handles correspondence, and keeps minutes of all meetings.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Carousel Controls -->
+                <div class="carousel-controls">
+                    <button class="carousel-btn prev" id="carouselPrev"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="carousel-dots" id="carouselDots">
+                        <!-- Dots injected by JS -->
+                    </div>
+                    <button class="carousel-btn next" id="carouselNext"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Other Office Bearers -->
+            <div class="container other-bearers">
+                <h3 class="bearers-heading">Other Office Bearers</h3>
+                <div class="bearers-grid">
+                    <div class="bearer-card">
+                        <div class="bearer-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                        <h4>Organizing Secretary</h4>
+                        <p>Coordinates the organizing of all meetings and activities of the Group.</p>
+                    </div>
+                    <div class="bearer-card">
+                        <div class="bearer-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                        <h4>Time Keeper</h4>
+                        <p>Keeps time during meetings and ensures all members adhere to the rules.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inspirational Team Banner -->
+            <div class="container team-banner">
+                <div class="banner-inner">
+                    <img src="assets/logo.png" alt="GCI Logo" class="banner-logo">
+                    <h3>"Caring in Love, United as One"</h3>
+                    <p>Our leadership is anchored in faith, driven by compassion, and committed to every member's growth. We don't just lead — we serve. We don't just meet — we build bonds that last a lifetime. This is more than a group; it's a family united by purpose.</p>
+                    <div class="banner-values">
+                        <span><i class="fa-solid fa-heart"></i> Love</span>
+                        <span><i class="fa-solid fa-hands-holding"></i> Unity</span>
+                        <span><i class="fa-solid fa-pray"></i> Faith</span>
+                        <span><i class="fa-solid fa-handshake"></i> Integrity</span>
+                        <span><i class="fa-solid fa-seedling"></i> Growth</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+</main>
+
+    <footer id="footer">
+        <div class="container footer-content">
+            <div class="footer-brand">
+                <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="footer-logo">
+                <p>"Caring in Love, United as One"</p>
+            </div>
+            <div class="footer-links">
+                <h4>Quick Links</h4>
+                <a href="#about">About Us</a>
+                <a href="#membership">Membership</a>
+                <a href="#register">Register</a>
+                <a href="#portal">Member Portal</a>
+                <a href="#activities">Activities</a>
+                <a href="#contact">Contact Us</a>
+            </div>
+            <div class="footer-socials">
+                <h4>Follow Us</h4>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Glamorous Care Initiative. All rights reserved.</p>
+            <p class="designer-credit">Designed by <strong>LameckTech</strong> | <i class="fa-solid fa-phone"></i> 0790397468</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Export Libraries (SheetJS for Excel; docx is lazy-loaded on demand) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="app.js?v=1.2"></script>
+    <!-- Version 4.4.0 - Lazy-load heavy export libs -->
+    <script src="portal.js?v=4.4"></script>
+</body>
+</html>

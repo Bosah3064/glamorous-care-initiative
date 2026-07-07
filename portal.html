@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glamorous Care Initiative — Caring in Love, United as One</title>
+    <meta name="description" content="Glamorous Care Initiative is a welfare organization dedicated to caring for its members and bringing people together in love and unity.">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+</head>
+<body>
+    <header class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="logo-img">
+        </a>
+        <button class="mobile-toggle" aria-label="Toggle navigation" id="mobileToggle">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html" class="nav-link active">Home</a>
+            <a href="about.html" class="nav-link">About Us</a>
+            <a href="leadership.html" class="nav-link">Leadership Team</a>
+            <a href="activities.html" class="nav-link">Activities</a>
+            <a href="membership.html" class="nav-link">Membership</a>
+            <a href="register.html" class="nav-link">Register</a>
+            <a href="gallery.html" class="nav-link">Gallery</a>
+            <a href="news.html" class="nav-link">News & Events</a>
+            <a href="contact.html" class="nav-link">Contact Us</a>
+            <a href="portal.html" class="nav-link nav-portal"><i class="fa-solid fa-circle-user"></i> My Portal</a>
+        </nav>
+    </header>
+
+    <main id="main-content">
+<section id="portal" class="page active">
+            <div class="container section-header">
+                <h2><i class="fa-solid fa-shield-halved"></i> Member Portal</h2>
+                <div class="divider"></div>
+                <p>Access your personalized dashboard to track contributions and membership status.</p>
+            </div>
+
+            <!-- Login View -->
+            <div class="container" id="portalLogin">
+                <div class="portal-auth-wrapper">
+                    <!-- Login Form -->
+                    <div class="portal-auth-card" id="loginFormContainer">
+                        <div class="auth-card-header">
+                            <div class="auth-icon"><i class="fa-solid fa-right-to-bracket"></i></div>
+                            <h3>Welcome Back</h3>
+                            <p>Sign in to access your dashboard</p>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-left: 4px solid var(--color-blue); text-align: left;">
+                            <strong style="display: block; color: var(--color-blue); font-size: 0.9rem; margin-bottom: 5px;"><i class="fa-solid fa-circle-info"></i> First time logging in?</strong>
+                            <p style="color: #374151; font-size: 0.85rem; margin: 0; line-height: 1.4;">Use your registered email and the default password <span style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">12345678</span>. You will be asked to create a new password once logged in.</p>
+                        </div>
+                        
+                        <div class="auth-error" id="loginError" style="display:none;"></div>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="loginEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+                                <input type="email" id="loginEmail" required placeholder="your.email@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
+                                <input type="password" id="loginPassword" required placeholder="Enter your password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
+                        </form>
+                        <div class="auth-footer">
+                            <p>Account creation is managed by the administration.</p>
+                        </div>
+                    </div>
+
+                    <!-- Password Reset Form (Forced on first login) -->
+                    <div class="portal-auth-card" id="resetPasswordFormContainer" style="display:none;">
+                        <div class="auth-card-header">
+                            <div class="auth-icon"><i class="fa-solid fa-key"></i></div>
+                            <h3>Secure Your Account</h3>
+                            <p>Please create a new password to continue.</p>
+                        </div>
+                        <div class="auth-error" id="resetError" style="display:none;"></div>
+                        <form id="resetPasswordForm">
+                            <div class="form-group" style="position: relative;">
+                                <label for="newPassword"><i class="fa-solid fa-lock"></i> New Password</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="newPassword" required placeholder="Min 6 characters" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <!-- Password Strength Meter -->
+                                <div id="passwordStrengthContainer" style="margin-top: 8px;">
+                                    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                                        <div class="strength-bar" id="strengthBar1"></div>
+                                        <div class="strength-bar" id="strengthBar2"></div>
+                                        <div class="strength-bar" id="strengthBar3"></div>
+                                        <div class="strength-bar" id="strengthBar4"></div>
+                                    </div>
+                                    <small id="strengthLabel" style="color: #9ca3af; font-size: 0.8rem;"></small>
+                                </div>
+                            </div>
+                            <div class="form-group" style="position: relative;">
+                                <label for="confirmNewPassword"><i class="fa-solid fa-lock"></i> Confirm New Password</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="confirmNewPassword" required placeholder="Repeat your new password" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('confirmNewPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small id="passwordMatchLabel" style="display: none; font-size: 0.8rem; margin-top: 4px;"></small>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-shield-halved"></i> Save & Continue</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard View (hidden until login) -->
+            <div class="container" id="portalDashboard" style="display:none;">
+                <!-- Incomplete Profile Alert -->
+                <div id="profileIncompleteAlert" style="display:none; margin-bottom: 20px; padding: 18px 20px; background: linear-gradient(135deg, #fef3c7, #fffbeb); border: 2px solid #f59e0b; border-radius: 12px; animation: pulse 2s infinite;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="font-size: 1.8rem;">⚠️</div>
+                        <div>
+                            <h4 style="margin: 0 0 5px; color: #92400e; font-size: 1rem;">Your Profile is Incomplete!</h4>
+                            <p style="margin: 0 0 8px; color: #78350f; font-size: 0.9rem; line-height: 1.5;">Please complete the following to keep your membership active:</p>
+                            <ul id="missingFieldsList" style="margin: 0; padding-left: 18px; color: #92400e; font-size: 0.85rem; line-height: 1.8;"></ul>
+                            <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <p style="margin: 0; color: #78350f; font-size: 0.85rem;"><i class="fa-solid fa-circle-info"></i> You can update these details online directly:</p>
+                                <button onclick="openUpdateProfileModal()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background: #d97706; color: white; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; margin: 0;"><i class="fa-solid fa-user-pen"></i> Update Profile Now</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Premium Profile Card -->
+                <div class="dashboard-header">
+                    <div class="profile-card premium-profile">
+                        <div class="profile-card-top">
+                            <div class="profile-avatar-large" id="profileAvatar">GC</div>
+                            <div class="profile-header-info">
+                                <h3 id="profileName">Member Name</h3>
+                                <p class="profile-subtitle" id="profileEmail">email@example.com</p>
+                                <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
+                                    <span class="status-badge status-active" id="profileStatus">Active</span>
+                                    <span class="status-badge" id="profileRole" style="display:none; background: #dbeafe; color: #2563eb;"></span>
+                                </div>
+                            </div>
+                            <button class="btn btn-logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+                        </div>
+                        <div class="profile-details-grid" id="profileDetailsGrid">
+                            <!-- Populated dynamically by JS (Phone & Join Date) -->
+                        </div>
+
+                        <!-- View Full Profile Toggle -->
+                        <div id="fullProfileToggle" style="display:none; text-align: center; margin-top: 15px;">
+                            <button id="btnViewFullProfile" onclick="toggleFullProfile()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 20px; border-radius: 25px; cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 0.9rem; transition: all 0.3s ease;">
+                                <i class="fa-solid fa-id-card"></i> View Full Profile
+                            </button>
+                        </div>
+
+                        <!-- Expandable Full Profile Details -->
+                        <div id="fullProfileDetails" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.15);">
+                            <h4 style="color: rgba(255,255,255,0.7); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">
+                                <i class="fa-solid fa-address-card"></i> Registration Details
+                            </h4>
+                            <div class="profile-details-grid" id="extraDetailsGrid">
+                                <!-- Populated by JS (custom fields) -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue"><i class="fa-solid fa-piggy-bank"></i></div>
+                        <div class="stat-info">
+                            <h4 id="totalSavings">KES 0</h4>
+                            <p>Total Savings</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        <div class="stat-info">
+                            <h4 id="paidOutSavings">KES 0</h4>
+                            <p>Paid Out (Dec)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-purple"><i class="fa-solid fa-id-card"></i></div>
+                        <div class="stat-info">
+                            <h4 id="registrationStatus">Unpaid</h4>
+                            <p>Registration Fee</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-orange"><i class="fa-solid fa-clock"></i></div>
+                        <div class="stat-info">
+                            <h4 id="pendingPayments">0</h4>
+                            <p>Pending Records</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment History -->
+                <div class="payments-section">
+                    <h3><i class="fa-solid fa-receipt"></i> Payment History</h3>
+                    <div class="table-responsive">
+                        <table class="payments-table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <i class="fa-solid fa-receipt"></i>
+                                        <p>No payment records yet.</p>
+                                        <small>Your payments will appear here once recorded by the Treasurer.</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- ADMIN PANEL — Only visible for admin roles   -->
+                <!-- ============================================ -->
+                <div id="adminPanel" style="display:none;">
+
+                    <!-- Admin Section Header -->
+                    <div class="admin-section-header" style="margin-top: 35px; margin-bottom: 25px; padding: 20px 25px; background: linear-gradient(135deg, var(--color-blue), var(--color-purple)); border-radius: 15px; color: white;">
+                        <h3 style="margin: 0; font-size: 1.3rem;"><i class="fa-solid fa-shield-halved"></i> Administration Panel</h3>
+                        <p style="margin: 5px 0 0; opacity: 0.85; font-size: 0.9rem;">Manage members and payment records</p>
+                    </div>
+
+                    <!-- Bulk Import Members -->
+                    <div class="admin-card" style="border: 2px dashed var(--color-blue); background: #f8fafc;">
+                        <h3><i class="fa-solid fa-file-excel"></i> Bulk Import from Google Forms</h3>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Download your responses from Google Forms as an Excel (.xlsx) or CSV file and upload it here to automatically create missing accounts.</p>
+                        <div class="admin-msg" id="importMsg"></div>
+                        
+                        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+                            <input type="file" id="importFile" accept=".xlsx, .xls, .csv" style="flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;">
+                            <button class="btn btn-secondary" id="btnScanFile" style="white-space: nowrap;"><i class="fa-solid fa-magnifying-glass"></i> Scan File</button>
+                        </div>
+                        
+                        <!-- Import Results Container -->
+                        <div id="importResults" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4><i class="fa-solid fa-user-plus" style="color: var(--color-green);"></i> New Members Found: <span id="newMembersCount">0</span></h4>
+                                <button class="btn btn-primary" id="btnProcessImport" style="padding: 8px 15px; font-size: 0.9rem;"><i class="fa-solid fa-cloud-arrow-up"></i> Import All</button>
+                            </div>
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+                                <table class="payments-table" style="margin: 0; font-size: 0.85rem;">
+                                    <thead style="position: sticky; top: 0; background: white;">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="importTableBody">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configure Profile Form Fields -->
+                    <div class="admin-card" style="border: 2px dashed var(--color-purple); background: #fbfbfe;">
+                        <h3><i class="fa-solid fa-gears"></i> Configure Member Profile Fields</h3>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Upload a Google Forms responses Excel file to automatically configure the profile fields. All columns except Name, Email, and Phone will become custom profile fields.</p>
+                        <div class="admin-msg" id="configMsg"></div>
+                        
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input type="file" id="configSchemaFile" accept=".xlsx, .xls, .csv" style="flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;">
+                            <button class="btn btn-primary" id="btnProcessSchema" style="white-space: nowrap; background: var(--color-purple);"><i class="fa-solid fa-wand-magic-sparkles"></i> Configure Fields</button>
+                        </div>
+                    </div>
+ 
+                    <!-- Create Member Account -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-user-plus"></i> Create Member Account</h3>
+                        <div class="admin-msg" id="addMemberMsg"></div>
+                        <form id="addMemberForm" class="admin-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="newMemberName" required placeholder="John Doe">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="newMemberEmail" required placeholder="john@example.com">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="newMemberPhone" placeholder="0712345678">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select id="newMemberRole">
+                                        <option value="member">Member</option>
+                                        <option value="treasury">Treasury</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="chairperson">Chairperson</option>
+                                        <option value="vice_chairperson">Vice Chairperson</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>ID Number (Optional)</label>
+                                    <input type="text" id="newMemberId" placeholder="e.g. 12345678">
+                                </div>
+                                <div class="form-group">
+                                    <label>Branch (Optional)</label>
+                                    <input type="text" id="newMemberBranch" placeholder="e.g. Nairobi">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="btnCreateMember"><i class="fa-solid fa-user-plus"></i> Create Account</button>
+                        </form>
+                        <p style="font-size: 0.85rem; color: #6b7280; margin-top: 10px;">New accounts will be created with the default password <strong>12345678</strong> and will be prompted to reset it on first login.</p>
+                    </div>
+
+                    <!-- Add Payment -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-plus-circle"></i> Add Payment Record</h3>
+                        <div class="admin-msg" id="paymentMsg"></div>
+                        <form id="addPaymentForm" class="admin-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Select Member</label>
+                                    <select id="paymentMember" required>
+                                        <option value="">— Choose a member —</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Payment Type</label>
+                                    <select id="paymentType" required>
+                                        <option value="saving">Monthly Saving</option>
+                                        <option value="registration">Registration Fee (600 KES)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Amount (KES)</label>
+                                    <input type="number" id="paymentAmount" required placeholder="200" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Month</label>
+                                    <select id="paymentMonth" required>
+                                        <option value="">— Select Month —</option>
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Payment Date</label>
+                                    <input type="date" id="paymentDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="paymentStatus">
+                                        <option value="paid">Paid</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="overdue">Overdue</option>
+                                    </select>
+                                </div>
+                            </div>
+                                <div class="form-group">
+                                    <label>Payout Status</label>
+                                    <select id="paymentPayoutStatus">
+                                        <option value="accumulating">Accumulating</option>
+                                        <option value="paid_out">Paid Out (December)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Reference (MPESA code, etc.)</label>
+                                <input type="text" id="paymentRef" placeholder="e.g., QHL7K2BXYZ">
+                            </div>
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Payment</button>
+                        </form>
+                    </div>
+
+                    <!-- Member Payments Directory -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-money-check-dollar"></i> View Member Payments</h3>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Select a member to view, cross-check, and edit their payment history.</p>
+                        
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label>Select Member</label>
+                            <select id="viewPaymentsMember" required style="width: 100%; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 10px; font-family: 'Outfit', sans-serif;">
+                                <option value="">— Select a member —</option>
+                            </select>
+                        </div>
+                        
+                        <div id="adminMemberPaymentsSection" style="display: none;">
+                            <div class="stats-grid" style="margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="stat-card" style="padding: 15px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; text-align: center;">
+                                    <h4 id="adminMemberTotalPaid" style="margin: 0; font-size: 1.25rem; color: #16a34a;">KES 0</h4>
+                                    <p style="margin: 5px 0 0; font-size: 0.8rem; color: #6b7280; font-weight: 600;">Total Paid</p>
+                                </div>
+                                <div class="stat-card" style="padding: 15px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; text-align: center;">
+                                    <h4 id="adminMemberTotalPending" style="margin: 0; font-size: 1.25rem; color: #d97706;">KES 0</h4>
+                                    <p style="margin: 5px 0 0; font-size: 0.8rem; color: #6b7280; font-weight: 600;">Total Pending</p>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="payments-table" style="font-size: 0.85rem; width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Reference</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminMemberPaymentsBody">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Members Directory -->
+                    <div class="admin-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> All Members</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="exportMembersToExcel()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                                <button onclick="exportMembersToWord()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #2563eb; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-word"></i> Export Word</button>
+                                <button onclick="exportMembersToPDF()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; background: #dc2626; color: white; border: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 8px; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+                            </div>
+                        </div>
+                        <div class="search-box" style="position: relative; margin-bottom: 15px;">
+                            <i class="fa-solid fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af;"></i>
+                            <input type="text" id="memberSearch" placeholder="Search by name or email..." style="padding-left: 40px; width: 100%; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem; font-family: 'Outfit', sans-serif; box-sizing: border-box;">
+                        </div>
+                        <div class="members-list" id="membersList">
+                            <p style="text-align: center; color: #9ca3af;">Loading members...</p>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END ADMIN PANEL -->
+
+                <!-- EDIT MEMBER MODAL -->
+                <div id="editMemberModal" class="modal-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                    <div class="modal-content" style="background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative;">
+                        <button onclick="document.getElementById('editMemberModal').style.display='none'" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: var(--color-blue); border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-user-pen"></i> Edit Member</h3>
+                        <div class="auth-error" id="editMemberMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="editMemberForm" class="admin-form">
+                            <input type="hidden" id="editMemberId">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="editMemberName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="editMemberEmail" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="editMemberPhone">
+                                </div>
+                                <div class="form-group">
+                                    <label>System Role</label>
+                                    <select id="editMemberRole">
+                                        <option value="member">Member</option>
+                                        <option value="treasury">Treasury</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="chairperson">Chairperson</option>
+                                        <option value="vice_chairperson">Vice Chairperson</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Date of Birth</label>
+                                    <input type="date" id="editMemberDob">
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <select id="editMemberGender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Marital Status</label>
+                                    <select id="editMemberMarital">
+                                        <option value="">Select Status</option>
+                                        <option value="Single">Single</option>
+                                        <option value="Married">Married</option>
+                                        <option value="Divorced">Divorced</option>
+                                        <option value="Widowed">Widowed</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>ID Number</label>
+                                    <input type="text" id="editMemberIdNumber">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Next of Kin Name</label>
+                                    <input type="text" id="editMemberNokName">
+                                </div>
+                                <div class="form-group">
+                                    <label>Next of Kin Phone</label>
+                                    <input type="tel" id="editMemberNokPhone">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="editMemberStatus">
+                                        <option value="active">Active</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100" style="margin-top: 15px;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- EDIT PAYMENT MODAL -->
+                <div id="editPaymentModal" class="modal-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                    <div class="modal-content" style="background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 500px; position: relative;">
+                        <button onclick="document.getElementById('editPaymentModal').style.display='none'" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: var(--color-blue); border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-pen-to-square"></i> Edit Payment</h3>
+                        <div class="auth-error" id="editPaymentMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="editPaymentForm" class="admin-form">
+                            <input type="hidden" id="editPaymentId">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Member Name</label>
+                                    <input type="text" id="editPaymentMemberName" disabled style="background: #f3f4f6;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Payment Type</label>
+                                    <select id="editPaymentType" required>
+                                        <option value="saving">Monthly Saving</option>
+                                        <option value="registration">Registration Fee (600 KES)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Amount (KES)</label>
+                                    <input type="number" id="editPaymentAmount" required min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Month</label>
+                                    <select id="editPaymentMonth" required>
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Payment Date</label>
+                                    <input type="date" id="editPaymentDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="editPaymentStatus">
+                                        <option value="paid">Paid</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="overdue">Overdue</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                                <div class="form-group">
+                                    <label>Payout Status</label>
+                                    <select id="editPaymentPayoutStatus">
+                                        <option value="accumulating">Accumulating</option>
+                                        <option value="paid_out">Paid Out (December)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Reference</label>
+                                <input type="text" id="editPaymentRef">
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button type="button" id="btnDeletePayment" onclick="deletePaymentRecord()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 10px; cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;"><i class="fa-solid fa-trash"></i> Delete</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 2; margin: 0;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- UPDATE PROFILE MODAL -->
+                <div id="updateProfileModal" class="modal-overlay" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                    <div class="modal-content" style="background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 600px; position: relative; max-height: 85vh; overflow-y: auto;">
+                        <button onclick="document.getElementById('updateProfileModal').style.display='none'" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: var(--color-blue); border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-user-pen"></i> Update Profile Details</h3>
+                        <div class="auth-error" id="updateProfileMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="updateProfileForm" class="admin-form">
+                            <!-- Dynamic fields populated by JS -->
+                            <div id="dynamicProfileFieldsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
+                            
+                            <button type="submit" class="btn btn-primary w-100" style="margin-top: 15px; width: 100%;"><i class="fa-solid fa-save"></i> Save Profile Details</button>
+                        </form>
+                    </div>
+                </div>
+ 
+            </div>
+        </section>
+</main>
+
+    <footer id="footer">
+        <div class="container footer-content">
+            <div class="footer-brand">
+                <img src="assets/logo.png" alt="Glamorous Care Initiative Logo" class="footer-logo">
+                <p>"Caring in Love, United as One"</p>
+            </div>
+            <div class="footer-links">
+                <h4>Quick Links</h4>
+                <a href="#about">About Us</a>
+                <a href="#membership">Membership</a>
+                <a href="#register">Register</a>
+                <a href="#portal">Member Portal</a>
+                <a href="#activities">Activities</a>
+                <a href="#contact">Contact Us</a>
+            </div>
+            <div class="footer-socials">
+                <h4>Follow Us</h4>
+                <div class="social-icons">
+                    <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Glamorous Care Initiative. All rights reserved.</p>
+            <p class="designer-credit">Designed by <strong>LameckTech</strong> | <i class="fa-solid fa-phone"></i> 0790397468</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Export Libraries (SheetJS for Excel; docx is lazy-loaded on demand) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="app.js?v=1.2"></script>
+    <!-- Version 4.4.0 - Lazy-load heavy export libs -->
+    <script src="portal.js?v=4.4"></script>
+</body>
+</html>
