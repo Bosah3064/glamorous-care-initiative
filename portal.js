@@ -1010,12 +1010,35 @@ function setupSessionResumeHandler() {
     });
 }
 
-// Close modal helper: hides overlay and removes fullscreen class
+// Open modal helper: saves scroll position, shows overlay, optionally fullscreen, and scrolls to top
+function openModal(id, options = { fullscreen: true, scrollToTop: true }) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Save current scroll position so we can restore later
+    try { el.dataset.prevScroll = String(window.pageYOffset || window.scrollY || 0); } catch (e) {}
+    if (options.fullscreen) el.classList.add('fullscreen');
+    el.style.display = 'flex';
+    // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
+    if (options.scrollToTop) {
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0,0); }
+    }
+}
+
+// Close modal helper: hides overlay, removes fullscreen class, restores scroll and body overflow
 function closeModal(id) {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.display = 'none';
     el.classList.remove('fullscreen');
+    // Restore body scrolling
+    document.body.style.overflow = '';
+    // Restore previous scroll position if available
+    const prev = el.dataset.prevScroll;
+    if (prev) {
+        try { window.scrollTo({ top: parseInt(prev, 10) || 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(parseInt(prev, 10) || 0, 0); }
+    }
+    try { delete el.dataset.prevScroll; } catch (e) { el.removeAttribute('data-prev-scroll'); }
 }
 
 if (logoutBtn) {
@@ -1279,11 +1302,7 @@ window.openEditMemberModal = function(id) {
     document.getElementById('editMemberNokPhone').value = fd.next_of_kin_phone || '';
     
     document.getElementById('editMemberMsg').style.display = 'none';
-    const editMemberOverlay = document.getElementById('editMemberModal');
-    if (editMemberOverlay) {
-        editMemberOverlay.classList.add('fullscreen');
-        editMemberOverlay.style.display = 'flex';
-    }
+    openModal('editMemberModal');
 };
 
 const editMemberForm = document.getElementById('editMemberForm');
@@ -1370,11 +1389,7 @@ window.openEditPaymentModal = async function(id) {
     document.getElementById('editPaymentRef').value = payment.reference || '';
     
     document.getElementById('editPaymentMsg').style.display = 'none';
-    const editPaymentOverlay = document.getElementById('editPaymentModal');
-    if (editPaymentOverlay) {
-        editPaymentOverlay.classList.add('fullscreen');
-        editPaymentOverlay.style.display = 'flex';
-    }
+    openModal('editPaymentModal');
 };
 
 const editPaymentForm = document.getElementById('editPaymentForm');
@@ -1948,11 +1963,7 @@ window.openUpdateProfileModal = async function() {
     
     container.innerHTML = '<div style="grid-column: span 2; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Loading form fields...</div>';
     if (msg) msg.style.display = 'none';
-    const updateProfileOverlay = document.getElementById('updateProfileModal');
-    if (updateProfileOverlay) {
-        updateProfileOverlay.classList.add('fullscreen');
-        updateProfileOverlay.style.display = 'flex';
-    }
+    openModal('updateProfileModal');
     
     // Always use the canonical schema — show ALL fields
     const schema = buildProfileSchema();
