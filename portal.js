@@ -623,6 +623,34 @@ function setupAdminEventListeners() {
         });
     }
 
+    function togglePaymentPayoutField(paymentType, containerId, selectId) {
+        const container = document.getElementById(containerId);
+        const select = document.getElementById(selectId);
+        if (!container || !select) return;
+        const isRegistration = paymentType === 'registration';
+        container.style.display = isRegistration ? 'none' : 'block';
+        select.disabled = isRegistration;
+        if (isRegistration) {
+            select.value = 'accumulating';
+        }
+    }
+
+    const paymentTypeSelect = document.getElementById('paymentType');
+    if (paymentTypeSelect) {
+        paymentTypeSelect.addEventListener('change', (e) => {
+            togglePaymentPayoutField(e.target.value, 'paymentPayoutStatusContainer', 'paymentPayoutStatus');
+        });
+        togglePaymentPayoutField(paymentTypeSelect.value, 'paymentPayoutStatusContainer', 'paymentPayoutStatus');
+    }
+
+    const editPaymentTypeSelect = document.getElementById('editPaymentType');
+    if (editPaymentTypeSelect) {
+        editPaymentTypeSelect.addEventListener('change', (e) => {
+            togglePaymentPayoutField(e.target.value, 'editPaymentPayoutStatusContainer', 'editPaymentPayoutStatus');
+        });
+        togglePaymentPayoutField(editPaymentTypeSelect.value, 'editPaymentPayoutStatusContainer', 'editPaymentPayoutStatus');
+    }
+
     // Add Payment Form
     const addPaymentForm = document.getElementById('addPaymentForm');
     if (addPaymentForm) {
@@ -632,6 +660,9 @@ function setupAdminEventListeners() {
             const memberSelect = document.getElementById('paymentMember');
             const selectedOption = memberSelect.options[memberSelect.selectedIndex];
 
+            const paymentType = document.getElementById('paymentType').value;
+            const payoutStatusValue = paymentType === 'registration' ? 'accumulating' : document.getElementById('paymentPayoutStatus').value;
+
             const payment = {
                 member_id: memberSelect.value,
                 member_name: selectedOption.getAttribute('data-name'),
@@ -639,8 +670,8 @@ function setupAdminEventListeners() {
                 month: document.getElementById('paymentMonth').value,
                 payment_date: document.getElementById('paymentDate').value,
                 status: document.getElementById('paymentStatus').value,
-                payment_type: document.getElementById('paymentType').value,
-                payout_status: document.getElementById('paymentPayoutStatus').value,
+                payment_type: paymentType,
+                payout_status: payoutStatusValue,
                 reference: document.getElementById('paymentRef').value || null,
                 added_by: currentMember ? currentMember.role : 'admin'
             };
@@ -971,15 +1002,50 @@ if (logoutBtn) {
 // =============================================
 // AUTH CHECK ON PAGE LOAD
 // =============================================
+function hideRegisterLinks() {
+    const regLinks = document.querySelectorAll('a[href="register.html"], a[href="#register"]');
+    regLinks.forEach(link => link.style.display = 'none');
+}
+
+function setupInviteSharing() {
+    const shareInviteBtn = document.getElementById('shareInviteBtn');
+    const inviteFeedback = document.getElementById('inviteFeedback');
+    if (!shareInviteBtn) return;
+
+    shareInviteBtn.addEventListener('click', async () => {
+        const inviteUrl = new URL('register.html', window.location.href).href;
+        const shareText = 'Join Glamorous Care Initiative — register now and become part of our community.';
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: 'Join Glamorous Care Initiative',
+                    text: shareText,
+                    url: inviteUrl
+                });
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(inviteUrl);
+                if (inviteFeedback) inviteFeedback.textContent = 'Invite link copied to clipboard!';
+            } else {
+                if (inviteFeedback) inviteFeedback.textContent = `Copy this invite link to share: ${inviteUrl}`;
+            }
+        } catch (error) {
+            if (inviteFeedback) inviteFeedback.textContent = 'Unable to share invite link. Please copy the link manually.';
+            console.error('Invite share error:', error);
+        }
+        if (inviteFeedback) {
+            setTimeout(() => { inviteFeedback.textContent = ''; }, 5000);
+        }
+    });
+}
+
 async function checkAuth() {
     const { data: { session } } = await client.auth.getSession();
     if (session) {
         currentSessionUser = session.user;
-        await checkUserAndLoadDashboard(session.user);
-        
-        // Hide registration link if user is logged in
-        const regLinks = document.querySelectorAll('a[href="register.html"], a[href="#register"]');
-        regLinks.forEach(link => link.style.display = 'none');
+        hideRegisterLinks();
+        if (document.getElementById('portal')) {
+            await checkUserAndLoadDashboard(session.user);
+        }
     }
 }
 
@@ -1017,9 +1083,8 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(portalSection, { attributes: true, attributeFilter: ['class'] });
     }
 
-    if (portalSection && portalSection.classList.contains('active')) {
-        checkAuth();
-    }
+    checkAuth();
+    setupInviteSharing();
 });
 
 // =============================================
@@ -1235,6 +1300,7 @@ window.openEditPaymentModal = function(id) {
     document.getElementById('editPaymentStatus').value = payment.status;
     document.getElementById('editPaymentType').value = payment.payment_type || 'saving';
     document.getElementById('editPaymentPayoutStatus').value = payment.payout_status || 'accumulating';
+    togglePaymentPayoutField(payment.payment_type || 'saving', 'editPaymentPayoutStatusContainer', 'editPaymentPayoutStatus');
     document.getElementById('editPaymentRef').value = payment.reference || '';
     
     document.getElementById('editPaymentMsg').style.display = 'none';
@@ -1251,13 +1317,15 @@ if (editPaymentForm) {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         
         const paymentId = document.getElementById('editPaymentId').value;
+        const editPaymentTypeValue = document.getElementById('editPaymentType').value;
+        const editPayoutStatusValue = editPaymentTypeValue === 'registration' ? 'accumulating' : document.getElementById('editPaymentPayoutStatus').value;
         const updates = {
             amount: document.getElementById('editPaymentAmount').value,
             month: document.getElementById('editPaymentMonth').value,
             payment_date: document.getElementById('editPaymentDate').value,
             status: document.getElementById('editPaymentStatus').value,
-            payment_type: document.getElementById('editPaymentType').value,
-            payout_status: document.getElementById('editPaymentPayoutStatus').value,
+            payment_type: editPaymentTypeValue,
+            payout_status: editPayoutStatusValue,
             reference: document.getElementById('editPaymentRef').value
         };
         
