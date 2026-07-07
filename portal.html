@@ -62,12 +62,20 @@
                                 <label for="loginEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
                                 <input type="email" id="loginEmail" required placeholder="your.email@example.com">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
-                                <input type="password" id="loginPassword" required placeholder="Enter your password">
+                                <div style="position: relative;">
+                                    <input type="password" id="loginPassword" required placeholder="Enter your password" style="padding-right: 45px;">
+                                    <button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
                         </form>
+                        <div style="margin-top: 12px; text-align: center;">
+                            <button type="button" class="btn btn-link" onclick="showPasswordResetForm()">Forgot password?</button>
+                        </div>
                         <div class="auth-footer">
                             <p>Account creation is managed by the administration.</p>
                         </div>
@@ -113,6 +121,9 @@
                             </div>
                             <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-shield-halved"></i> Save & Continue</button>
                         </form>
+                        <div style="margin-top: 14px; text-align: center;">
+                            <button type="button" class="btn btn-link" onclick="showLoginForm()">Back to login</button>
+                        </div>
                     </div>
                 </div>
             </div>

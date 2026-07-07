@@ -1,77 +1,57 @@
 import 'package:flutter/material.dart';
-// import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_colors.dart';
+import 'screens/welcome_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/payment_history_screen.dart';
+import 'screens/admin_panel_screen.dart';
+import 'screens/reset_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Supabase here with your keys before running the app.
+  // TODO: Initialize Supabase with your project details.
   // await Supabase.initialize(url: 'YOUR_SUPABASE_URL', anonKey: 'YOUR_SUPABASE_ANON_KEY');
-  runApp(MyApp());
+  runApp(const GlamorousCareApp());
 }
 
-class MyApp extends StatelessWidget {
-  final Color primary = const Color(0xFF1d5f99);
-  final Color purple = const Color(0xFF683669);
-  final Color red = const Color(0xFFa5243d);
+class GlamorousCareApp extends StatelessWidget {
+  const GlamorousCareApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Glamorous Care',
+      title: 'Glamorous Care Initiative',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: primary,
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.blue,
-        ).copyWith(secondary: purple),
-        appBarTheme: AppBarTheme(
-          color: Colors.white,
-          iconTheme: IconThemeData(color: primary),
+        scaffoldBackgroundColor: AppColors.background,
+        primaryColor: AppColors.primary,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary)
+            .copyWith(secondary: AppColors.purple),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.primary,
           elevation: 0,
+          centerTitle: false,
         ),
-      ),
-      home: HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            // Replace with your logo in assets/logo.png
-            Image.asset(
-              'assets/logo.png',
-              height: 40,
-              errorBuilder: (_, __, ___) => SizedBox(width: 40),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            SizedBox(width: 12),
-            Text('Glamorous Care', style: TextStyle(color: Color(0xFF1d5f99))),
-          ],
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Welcome to the Glamorous Care app',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  // navigate to login / dashboard
-                },
-                child: Text('Get Started'),
-              ),
-            ],
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 28),
           ),
         ),
       ),
+      initialRoute: WelcomeScreen.route,
+      routes: {
+        WelcomeScreen.route: (_) => const WelcomeScreen(),
+        LoginScreen.route: (_) => const LoginScreen(),
+        ResetPasswordScreen.route: (_) => const ResetPasswordScreen(),
+        DashboardScreen.route: (_) => const DashboardScreen(),
+        PaymentHistoryScreen.route: (_) => const PaymentHistoryScreen(),
+        AdminPanelScreen.route: (_) => const AdminPanelScreen(),
+      },
     );
   }
 }

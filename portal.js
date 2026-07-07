@@ -999,6 +999,18 @@ function checkPasswordMatch() {
     }
 }
 
+function showPasswordResetForm() {
+    if (loginFormContainer) loginFormContainer.style.display = 'none';
+    if (resetPasswordFormContainer) resetPasswordFormContainer.style.display = 'block';
+    if (loginView) loginView.style.display = 'block';
+}
+
+function showLoginForm() {
+    if (resetPasswordFormContainer) resetPasswordFormContainer.style.display = 'none';
+    if (loginFormContainer) loginFormContainer.style.display = 'block';
+    if (loginView) loginView.style.display = 'block';
+}
+
 // =============================================
 // SESSION RESUME HANDLING
 // =============================================
