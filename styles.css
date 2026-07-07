@@ -124,12 +124,17 @@ ul {
 /* Fullscreen variant for modals when a full-page experience is desired */
 .modal-overlay.fullscreen .modal-content {
     width: 100%;
-    height: 100vh;
+    position: fixed;
+    top: 80px;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    height: calc(100vh - 100px);
     max-width: none;
-    max-height: none;
     border-radius: 0;
     padding: 24px;
     box-shadow: none;
+    overflow-y: auto;
 }
 
 /* Ensure fullscreen modals anchor to the top so content is immediately visible */
