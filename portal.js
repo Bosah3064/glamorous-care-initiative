@@ -1271,7 +1271,11 @@ window.openEditMemberModal = function(id) {
     document.getElementById('editMemberNokPhone').value = fd.next_of_kin_phone || '';
     
     document.getElementById('editMemberMsg').style.display = 'none';
-    document.getElementById('editMemberModal').style.display = 'flex';
+    const editMemberOverlay = document.getElementById('editMemberModal');
+    if (editMemberOverlay) {
+        editMemberOverlay.classList.add('fullscreen');
+        editMemberOverlay.style.display = 'flex';
+    }
 };
 
 const editMemberForm = document.getElementById('editMemberForm');
@@ -1358,7 +1362,11 @@ window.openEditPaymentModal = async function(id) {
     document.getElementById('editPaymentRef').value = payment.reference || '';
     
     document.getElementById('editPaymentMsg').style.display = 'none';
-    document.getElementById('editPaymentModal').style.display = 'flex';
+    const editPaymentOverlay = document.getElementById('editPaymentModal');
+    if (editPaymentOverlay) {
+        editPaymentOverlay.classList.add('fullscreen');
+        editPaymentOverlay.style.display = 'flex';
+    }
 };
 
 const editPaymentForm = document.getElementById('editPaymentForm');
@@ -1933,7 +1941,11 @@ window.openUpdateProfileModal = async function() {
     
     container.innerHTML = '<div style="grid-column: span 2; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Loading form fields...</div>';
     if (msg) msg.style.display = 'none';
-    document.getElementById('updateProfileModal').style.display = 'flex';
+    const updateProfileOverlay = document.getElementById('updateProfileModal');
+    if (updateProfileOverlay) {
+        updateProfileOverlay.classList.add('fullscreen');
+        updateProfileOverlay.style.display = 'flex';
+    }
     
     // Always use the canonical schema — show ALL fields
     const schema = buildProfileSchema();
