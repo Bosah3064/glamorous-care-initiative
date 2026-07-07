@@ -1000,8 +1000,16 @@ function checkPasswordMatch() {
 }
 
 // =============================================
-// DOM LOADED INIT
+// SESSION RESUME HANDLING
 // =============================================
+function setupSessionResumeHandler() {
+    window.addEventListener('focus', () => {
+        if (currentSessionUser) {
+            checkAuth();
+        }
+    });
+}
+
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         await client.auth.signOut();
@@ -1072,6 +1080,8 @@ async function checkAuth() {
     if (session) {
         currentSessionUser = session.user;
         hideRegisterLinks();
+        setupInactivityHandlers();
+        resetInactivityTimer();
         if (document.getElementById('portal')) {
             await checkUserAndLoadDashboard(session.user);
         }
@@ -1112,6 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(portalSection, { attributes: true, attributeFilter: ['class'] });
     }
 
+    setupSessionResumeHandler();
     checkAuth();
     setupInviteSharing();
 });
@@ -2430,32 +2441,6 @@ window.exportMembersToWord = async function() {
         alert("Word Export failed: " + err.message);
     }
 };
-
-// FIX: Scroll to top when any modal opens
-// =============================================
-(function fixModalScroll() {
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                const el = mutation.target;
-                if (el.classList.contains('modal-overlay') && el.style.display === 'flex') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    el.scrollTop = 0;
-                }
-            }
-        });
-    });
-    
-    document.querySelectorAll('.modal-overlay').forEach(modal => {
-        observer.observe(modal, { attributes: true });
-    });
-    
-    // Also fix the update profile modal
-    const updateModal = document.getElementById('updateProfileModal');
-    if (updateModal) {
-        observer.observe(updateModal, { attributes: true });
-    }
-})();
 
 // =============================================
 // RELATIVE CARD ADD/REMOVE
