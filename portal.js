@@ -449,24 +449,28 @@ function renderPayments(payments) {
     let pendingCount = 0;
 
     paymentsTableBody.innerHTML = payments.map(payment => {
-        if (payment.status === 'paid') {
-            if (payment.payment_type === 'registration') {
+        const status = (payment.status || '').toString().trim().toLowerCase();
+        const type = (payment.payment_type || '').toString().trim().toLowerCase();
+        const payoutStatus = (payment.payout_status || '').toString().trim().toLowerCase();
+
+        if (status === 'paid') {
+            if (type === 'registration') {
                 isRegistered = true;
-            } else if (payment.payment_type === 'saving' || !payment.payment_type) {
-                if (payment.payout_status === 'paid_out') {
-                    totalPaidOutAmount += payment.amount;
+            } else if (type === 'saving' || type === '') {
+                if (payoutStatus === 'paid_out') {
+                    totalPaidOutAmount += parseFloat(payment.amount) || 0;
                 } else {
-                    totalSavedAmount += payment.amount;
+                    totalSavedAmount += parseFloat(payment.amount) || 0;
                 }
             }
-        } else if (payment.status === 'pending') {
+        } else if (status === 'pending') {
             pendingCount++;
         }
 
-        const statusClass = payment.status === 'paid' ? 'status-active' :
-                           payment.status === 'pending' ? 'status-probation' : 'status-suspended';
-        const statusIcon = payment.status === 'paid' ? 'fa-circle-check' :
-                          payment.status === 'pending' ? 'fa-clock' : 'fa-triangle-exclamation';
+        const statusClass = status === 'paid' ? 'status-active' :
+                           status === 'pending' ? 'status-probation' : 'status-suspended';
+        const statusIcon = status === 'paid' ? 'fa-circle-check' :
+                          status === 'pending' ? 'fa-clock' : 'fa-triangle-exclamation';
 
         // Store the payment globally for the edit modal
         window.allPayments = window.allPayments || [];
@@ -493,7 +497,7 @@ function renderPayments(payments) {
     if (paidOutSavings) paidOutSavings.textContent = `KES ${totalPaidOutAmount.toLocaleString()}`;
     if (registrationStatus) {
         if (isRegistered) {
-            registrationStatus.textContent = 'Paid ?';
+            registrationStatus.textContent = 'Paid';
             registrationStatus.style.color = 'var(--color-green)';
         } else {
             registrationStatus.textContent = 'Unpaid';
@@ -1282,8 +1286,12 @@ if (editMemberForm) {
 
 // EDIT PAYMENT
 window.openEditPaymentModal = function(id) {
-    const payment = window.allPayments.find(p => p.id === id);
-    if (!payment) return;
+    if (!window.allPayments) window.allPayments = [];
+    const payment = window.allPayments.find(p => String(p.id) === String(id));
+    if (!payment) {
+        console.error('Edit payment failed: payment not found', id, window.allPayments);
+        return;
+    }
     
     document.getElementById('editPaymentId').value = payment.id;
     document.getElementById('editPaymentMemberName').value = payment.member_name;
