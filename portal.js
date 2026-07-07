@@ -497,11 +497,18 @@ function renderPayments(payments) {
     if (paidOutSavings) paidOutSavings.textContent = `KES ${totalPaidOutAmount.toLocaleString()}`;
     if (registrationStatus) {
         if (isRegistered) {
-            registrationStatus.textContent = 'Paid';
-            registrationStatus.style.color = 'var(--color-green)';
+            registrationStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Paid';
+            registrationStatus.style.color = '#16a34a';
+            registrationStatus.style.background = 'rgba(134, 239, 172, 0.2)';
+            registrationStatus.style.border = '1px solid rgba(16, 185, 129, 0.25)';
+            registrationStatus.style.padding = '4px 10px';
+            registrationStatus.style.borderRadius = '999px';
         } else {
             registrationStatus.textContent = 'Unpaid';
             registrationStatus.style.color = 'var(--color-orange)';
+            registrationStatus.style.background = 'transparent';
+            registrationStatus.style.border = 'none';
+            registrationStatus.style.padding = '';
         }
     }
     if (pendingPayments) pendingPayments.textContent = pendingCount.toString();
@@ -1285,12 +1292,22 @@ if (editMemberForm) {
 }
 
 // EDIT PAYMENT
-window.openEditPaymentModal = function(id) {
+window.openEditPaymentModal = async function(id) {
     if (!window.allPayments) window.allPayments = [];
-    const payment = window.allPayments.find(p => String(p.id) === String(id));
+    let payment = window.allPayments.find(p => String(p.id) === String(id));
     if (!payment) {
-        console.error('Edit payment failed: payment not found', id, window.allPayments);
-        return;
+        try {
+            const { data, error } = await client.from('payments').select('*').eq('id', id).single();
+            if (error || !data) {
+                console.error('Edit payment failed: payment not found', id, error);
+                return;
+            }
+            payment = data;
+            window.allPayments.push(payment);
+        } catch (err) {
+            console.error('Edit payment fetch error:', err);
+            return;
+        }
     }
     
     document.getElementById('editPaymentId').value = payment.id;
