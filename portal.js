@@ -598,6 +598,18 @@ function populateMemberDropdown(members) {
 
 // Setup admin event listeners (only once)
 let adminListenersAttached = false;
+function togglePaymentPayoutField(paymentType, containerId, selectId) {
+    const container = document.getElementById(containerId);
+    const select = document.getElementById(selectId);
+    if (!container || !select) return;
+    const isRegistration = paymentType === 'registration';
+    container.style.display = isRegistration ? 'none' : 'block';
+    select.disabled = isRegistration;
+    if (isRegistration) {
+        select.value = 'accumulating';
+    }
+}
+
 function setupAdminEventListeners() {
     if (adminListenersAttached) return;
     adminListenersAttached = true;
@@ -634,16 +646,22 @@ function setupAdminEventListeners() {
         });
     }
 
-    function togglePaymentPayoutField(paymentType, containerId, selectId) {
-        const container = document.getElementById(containerId);
-        const select = document.getElementById(selectId);
-        if (!container || !select) return;
-        const isRegistration = paymentType === 'registration';
-        container.style.display = isRegistration ? 'none' : 'block';
-        select.disabled = isRegistration;
-        if (isRegistration) {
-            select.value = 'accumulating';
-        }
+    // Admin member payments action buttons (edit/delete)
+    const adminMemberPaymentsBody = document.getElementById('adminMemberPaymentsBody');
+    if (adminMemberPaymentsBody) {
+        adminMemberPaymentsBody.addEventListener('click', (event) => {
+            const button = event.target.closest('button.admin-payment-action');
+            if (!button) return;
+            const action = button.dataset.action;
+            const paymentId = button.dataset.paymentId;
+            if (!action || !paymentId) return;
+
+            if (action === 'edit-payment') {
+                window.openEditPaymentModal(paymentId);
+            } else if (action === 'delete-payment') {
+                window.deletePaymentRecord(paymentId);
+            }
+        });
     }
 
     const paymentTypeSelect = document.getElementById('paymentType');
@@ -1763,8 +1781,8 @@ window.loadMemberPaymentsAdmin = async function(memberId) {
                         <td style="font-family:monospace; color:#6b7280;">${p.reference || '-'}</td>
                         <td>
                             <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                <button onclick="openEditPaymentModal('${p.id}')" style="background:var(--color-purple); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-pen"></i> Edit</button>
-                                <button onclick="deletePaymentRecord('${p.id}')" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-trash"></i> Del</button>
+                                <button type="button" class="admin-payment-action" data-action="edit-payment" data-payment-id="${p.id}" style="background:var(--color-purple); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button type="button" class="admin-payment-action" data-action="delete-payment" data-payment-id="${p.id}" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-trash"></i> Del</button>
                             </div>
                         </td>
                     </tr>
