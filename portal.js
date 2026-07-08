@@ -260,6 +260,12 @@ async function loadDashboard(user, preloadedMember = null) {
         .order('payment_date', { ascending: false });
 
     renderPayments(payments || []);
+    // Render member-facing analytics (monthly breakdown + legend)
+    try {
+        renderPaymentAnalytics(payments || []);
+    } catch (err) {
+        console.error('Payment analytics render error:', err);
+    }
 }
 
 // =============================================

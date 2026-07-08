@@ -219,27 +219,38 @@
                 <!-- Payment History -->
                 <div class="payments-section">
                     <h3><i class="fa-solid fa-receipt"></i> Payment History</h3>
-                    <div class="table-responsive">
-                        <table class="payments-table">
-                            <thead>
-                                <tr>
-                                    <th>Month</th>
-                                    <th>Amount</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Reference</th>
-                                </tr>
-                            </thead>
-                            <tbody id="paymentsTableBody">
-                                <tr>
-                                    <td colspan="5" class="empty-state">
-                                        <i class="fa-solid fa-receipt"></i>
-                                        <p>No payment records yet.</p>
-                                        <small>Your payments will appear here once recorded by the Treasurer.</small>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px;">
+                        <div style="flex:1; min-width:260px;">
+                            <div id="memberPaymentAnalytics" style="background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px;">
+                                <h4 style="margin:0 0 8px 0; font-size:1rem;">Your Payment Progress</h4>
+                                <div id="memberPaymentAnalyticsChart" style="min-height:160px; display:flex; align-items:center; justify-content:center;"></div>
+                                <div id="memberPaymentAnalyticsLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:0.9rem; color:#374151;"></div>
+                            </div>
+                        </div>
+                        <div style="flex:2; min-width:320px;">
+                            <div class="table-responsive">
+                                <table class="payments-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Reference</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="paymentsTableBody">
+                                        <tr>
+                                            <td colspan="5" class="empty-state">
+                                                <i class="fa-solid fa-receipt"></i>
+                                                <p>No payment records yet.</p>
+                                                <small>Your payments will appear here once recorded by the Treasurer.</small>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
