@@ -602,6 +602,96 @@ function renderPaymentAnalytics(payments) {
     }
 }
 
+// MEMBER VIRTUAL CARD + DOWNLOAD HELPERS
+function maskValue(val) {
+    if (!val) return '';
+    const s = String(val);
+    if (s.includes('@')) {
+        const parts = s.split('@');
+        const name = parts[0];
+        const domain = parts[1];
+        if (name.length <= 2) return name[0] + '***@' + domain;
+        return name[0] + '***' + name.slice(-1) + '@' + domain;
+    }
+    if (/^\d+$/.test(s)) {
+        return s.length > 4 ? '****' + s.slice(-4) : s;
+    }
+    return s.length > 6 ? s.slice(0,3) + '...' + s.slice(-2) : s;
+}
+
+function colorForMember(id) {
+    const colors = ['#0f172a','#0ea5a4','#2563eb','#7c3aed','#ef4444','#f59e0b','#16a34a'];
+    if (!id) return colors[0];
+    let hash = 0; for (let i=0;i<id.length;i++) hash = ((hash<<5)-hash) + id.charCodeAt(i);
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function renderMemberVirtualCard(payments) {
+    const cardEl = document.getElementById('memberVirtualCard');
+    if (!cardEl) return;
+    const member = currentMember || { full_name: 'Member', email: '', phone: '' };
+    const paidTotal = (payments || []).reduce((s,p) => s + (Number(p.amount) || 0), 0);
+    const color = colorForMember(member.id || member.email || member.full_name);
+
+    cardEl.style.background = color;
+    cardEl.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+            <img src="assets/logo.png" alt="logo" style="width:42px; height:42px; border-radius:8px; background:rgba(255,255,255,0.12); padding:6px; object-fit:contain;" />
+            <div>
+                <div style="font-weight:700; font-size:0.95rem;">Glamorous Care</div>
+                <div style="font-size:0.78rem; opacity:0.95;">Community Card</div>
+            </div>
+        </div>
+        <div style="margin-top:8px; font-size:0.95rem; font-weight:700;">${member.full_name}</div>
+        <div style="font-size:0.85rem; opacity:0.95;">${maskValue(member.email)} ${member.phone ? '• ' + maskValue(member.phone) : ''}</div>
+        <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:0.9rem;">Paid</div>
+            <div style="font-weight:700;">KES ${paidTotal.toLocaleString()}</div>
+        </div>
+        <div style="font-size:0.72rem; opacity:0.95; margin-top:6px;">Member ID: ${String(member.id || '').slice(-6).padStart(3,'*')}</div>
+    `;
+
+    // attach download handlers
+    const pngBtn = document.getElementById('downloadCardPngBtn');
+    const pdfBtn = document.getElementById('downloadCardPdfBtn');
+
+    if (pngBtn) {
+        pngBtn.onclick = async () => {
+            try {
+                const canvas = await html2canvas(cardEl, { scale: 2 });
+                const dataUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `${(member.full_name || 'member').replace(/\s+/g,'_')}_card.png`;
+                link.click();
+            } catch (err) { console.error('PNG export failed', err); }
+        };
+    }
+
+    if (pdfBtn) {
+        pdfBtn.onclick = async () => {
+            try {
+                const canvas = await html2canvas(cardEl, { scale: 2 });
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf || {};
+                if (jsPDF) {
+                    const pdf = new jsPDF({ orientation: 'landscape' });
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    pdf.addImage(imgData, 'PNG', 10, 10, pageWidth - 20, 0);
+                    pdf.save(`${(member.full_name || 'member').replace(/\s+/g,'_')}_card.pdf`);
+                } else {
+                    // fallback: save PNG
+                    const link = document.createElement('a');
+                    link.href = imgData;
+                    link.download = `${(member.full_name || 'member').replace(/\s+/g,'_')}_card.png`;
+                    link.click();
+                }
+            } catch (err) { console.error('PDF export failed', err); }
+        };
+    }
+}
+
 // Render Members Directory (Only show when filtered)
 function renderMembersList(members, searchTerm = "") {
     const list = document.getElementById('membersList');
