@@ -716,6 +716,64 @@ function renderMemberVirtualCard(payments) {
 
 // selected color for card (state)
 let selectedCardColor = null;
+let selectedCardTemplateId = null;
+
+const CARD_TEMPLATES = [
+    { id: 'modern_blue', name: 'Modern Blue', tag: 'blue', bg: 'linear-gradient(135deg,#2563eb,#60a5fa)', text:'#fff', accent:'#93c5fd' },
+    { id: 'classic_black', name: 'Classic Black', tag: 'dark', bg: 'linear-gradient(90deg,#111827,#0f172a)', text:'#fff', accent:'#94a3b8' },
+    { id: 'emerald', name: 'Emerald', tag: 'green', bg: 'linear-gradient(135deg,#16a34a,#86efac)', text:'#062a17', accent:'#bbf7d0' },
+    { id: 'royal_purple', name: 'Royal', tag: 'purple', bg: 'linear-gradient(135deg,#7c3aed,#a78bfa)', text:'#fff', accent:'#e9d5ff' },
+    { id: 'sun_gold', name: 'Gold', tag: 'gold', bg: 'linear-gradient(135deg,#f59e0b,#fef3c7)', text:'#3b2714', accent:'#fce8c3' },
+    { id: 'minimal_white', name: 'Minimal', tag: 'dark', bg: 'linear-gradient(135deg,#ffffff,#f3f4f6)', text:'#0f172a', accent:'#94a3b8' }
+];
+
+function setupCardTemplates() {
+    const container = document.getElementById('cardTemplatesContainer');
+    const filter = document.getElementById('cardTemplateColorFilter');
+    if (!container) return;
+    container.innerHTML = '';
+    const buildThumb = (t) => {
+        const div = document.createElement('div');
+        div.className = 'template-thumb';
+        div.dataset.id = t.id;
+        div.dataset.tag = t.tag;
+        div.title = t.name;
+        const preview = document.createElement('div');
+        preview.className = 'template-preview';
+        preview.style.background = t.bg;
+        preview.style.borderRadius = '8px';
+        div.appendChild(preview);
+        div.onclick = () => {
+            selectedCardTemplateId = t.id;
+            Array.from(container.children).forEach(ch => ch.classList.remove('selected'));
+            div.classList.add('selected');
+            renderMemberVirtualCard(window._lastMemberPayments || []);
+        };
+        return div;
+    };
+
+    const refresh = () => {
+        const sel = filter ? filter.value : 'all';
+        container.innerHTML = '';
+        CARD_TEMPLATES.filter(t => sel === 'all' || t.tag === sel).forEach(t => container.appendChild(buildThumb(t)));
+        // auto-select first
+        if (!selectedCardTemplateId && container.firstChild) {
+            container.firstChild.classList.add('selected');
+            selectedCardTemplateId = container.firstChild.dataset.id;
+        }
+    };
+
+    if (filter) {
+        filter.onchange = () => refresh();
+    }
+    refresh();
+}
+
+// call on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupCardPalette();
+    setupCardTemplates();
+});
 
 function setupCardPalette() {
     const paletteEl = document.getElementById('cardColorPalette');
