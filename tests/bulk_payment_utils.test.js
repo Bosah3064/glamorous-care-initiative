@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildBulkPaymentRows, validateBulkPaymentSelection, filterBulkPaymentEligibleMembers } = require('../bulk-payment-utils');
+const { buildBulkPaymentRows, validateBulkPaymentSelection, filterBulkPaymentEligibleMembers, buildMonthlyPaymentAnalytics, summarizeAdjustmentsAndAdvances } = require('../bulk-payment-utils');
 
 test('buildBulkPaymentRows creates one payment per selected member', () => {
   const members = [
@@ -57,4 +57,32 @@ test('filterBulkPaymentEligibleMembers excludes admin and treasury roles', () =>
   const filtered = filterBulkPaymentEligibleMembers(members);
 
   assert.deepEqual(filtered.map((member) => member.id), ['m1', 'm4']);
+});
+
+test('buildMonthlyPaymentAnalytics groups payments by month', () => {
+  const analytics = buildMonthlyPaymentAnalytics([
+    { amount: 200, month: 'Jul 2026' },
+    { amount: 150, month: 'Jul 2026' },
+    { amount: 300, month: 'Aug 2026' }
+  ]);
+
+  assert.deepEqual(analytics, [
+    { label: 'Aug 2026', amount: 300, count: 1 },
+    { label: 'Jul 2026', amount: 350, count: 2 }
+  ]);
+});
+
+test('summarizeAdjustmentsAndAdvances counts pending and paid-out payments', () => {
+  const summary = summarizeAdjustmentsAndAdvances([
+    { amount: 200, status: 'pending' },
+    { amount: 450, status: 'paid' },
+    { amount: 300, payout_status: 'paid_out' }
+  ]);
+
+  assert.deepEqual(summary, {
+    adjustmentCount: 1,
+    adjustmentAmount: 200,
+    advanceCount: 1,
+    advanceAmount: 300
+  });
 });

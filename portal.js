@@ -523,10 +523,77 @@ function renderPayments(payments) {
 // Load admin data (members list + dropdown)
 async function loadAdminData() {
     const { data: members } = await client.from('members').select('*').order('full_name');
+    const { data: payments } = await client.from('payments').select('*').order('payment_date', { ascending: true });
     allMembers = members || [];
     renderMembersList(allMembers, ""); // pass empty string to hide by default
     populateMemberDropdown(allMembers);
+    renderPaymentAnalytics(payments || []);
     setupAdminEventListeners();
+}
+
+function renderPaymentAnalytics(payments) {
+    const chartContainer = document.getElementById('paymentAnalyticsChart');
+    const adjustmentsEl = document.getElementById('paymentAnalyticsAdjustments');
+    const advancesEl = document.getElementById('paymentAnalyticsAdvances');
+    const legendEl = document.getElementById('paymentAnalyticsLegend');
+
+    if (!chartContainer && !adjustmentsEl && !advancesEl) return;
+
+    const analytics = (bulkPaymentHelpers.buildMonthlyPaymentAnalytics || (() => []))(payments || []);
+    const summary = (bulkPaymentHelpers.summarizeAdjustmentsAndAdvances || (() => ({ adjustmentCount: 0, adjustmentAmount: 0, advanceCount: 0, advanceAmount: 0 })))(payments || []);
+
+    if (adjustmentsEl) {
+        adjustmentsEl.textContent = `KES ${summary.adjustmentAmount.toLocaleString()}`;
+    }
+
+    if (advancesEl) {
+        advancesEl.textContent = `KES ${summary.advanceAmount.toLocaleString()}`;
+    }
+
+    if (chartContainer) {
+        if (!analytics.length) {
+            chartContainer.innerHTML = '<p style="margin:0;color:#6b7280;">No payment history yet for analytics.</p>';
+            if (legendEl) legendEl.innerHTML = '';
+            return;
+        }
+
+        const size = 220;
+        const radius = 72;
+        const circumference = 2 * Math.PI * radius;
+        const colors = ['#2563eb', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899', '#0f766e', '#6366f1', '#f97316', '#64748b', '#84cc16'];
+        const total = analytics.reduce((sum, item) => sum + item.amount, 0) || 1;
+        let offset = 0;
+
+        const segments = analytics.map((item, index) => {
+            const segmentLength = (item.amount / total) * circumference;
+            const color = colors[index % colors.length];
+            const segment = `<circle cx="110" cy="110" r="${radius}" fill="none" stroke="${color}" stroke-width="34" stroke-linecap="round" stroke-dasharray="${segmentLength} ${circumference - segmentLength}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)" />`;
+            offset += segmentLength;
+            return segment;
+        }).join('');
+
+        chartContainer.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+                <svg width="220" height="220" viewBox="0 0 220 220" aria-label="Monthly payment chart">
+                    <circle cx="110" cy="110" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="34" />
+                    ${segments}
+                    <circle cx="110" cy="110" r="${radius - 34}" fill="white" />
+                    <text x="110" y="104" text-anchor="middle" font-size="18" font-weight="700" fill="#111827">KES ${Math.round(total).toLocaleString()}</text>
+                    <text x="110" y="126" text-anchor="middle" font-size="12" fill="#6b7280">Monthly total</text>
+                </svg>
+            </div>
+        `;
+
+        if (legendEl) {
+            legendEl.innerHTML = analytics.map((item, index) => `
+                <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem; color:#374151;">
+                    <span style="width:10px; height:10px; border-radius:999px; background:${colors[index % colors.length]};"></span>
+                    <span>${item.label}</span>
+                    <strong>KES ${Math.round(item.amount).toLocaleString()}</strong>
+                </div>
+            `).join('');
+        }
+    }
 }
 
 // Render Members Directory (Only show when filtered)

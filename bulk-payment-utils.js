@@ -56,9 +56,61 @@
     return errors;
   }
 
+  function normalizePaymentMonth(payment) {
+    if (payment && payment.month) {
+      return payment.month;
+    }
+
+    if (payment && payment.payment_date) {
+      const parsedDate = new Date(payment.payment_date);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        return `${parsedDate.toLocaleString('en', { month: 'short' })} ${parsedDate.getFullYear()}`;
+      }
+    }
+
+    return 'Unknown';
+  }
+
+  function buildMonthlyPaymentAnalytics(payments) {
+    const buckets = {};
+
+    (payments || []).forEach((payment) => {
+      const monthLabel = normalizePaymentMonth(payment);
+      const amount = Number(payment.amount) || 0;
+      if (!buckets[monthLabel]) {
+        buckets[monthLabel] = { label: monthLabel, amount: 0, count: 0 };
+      }
+      buckets[monthLabel].amount += amount;
+      buckets[monthLabel].count += 1;
+    });
+
+    return Object.values(buckets).sort((left, right) => left.label.localeCompare(right.label));
+  }
+
+  function summarizeAdjustmentsAndAdvances(payments) {
+    const adjustmentRecords = (payments || []).filter((payment) => {
+      const status = (payment.status || '').toString().trim().toLowerCase();
+      return status === 'pending' || status === 'overdue';
+    });
+
+    const advanceRecords = (payments || []).filter((payment) => {
+      const payoutStatus = (payment.payout_status || '').toString().trim().toLowerCase();
+      return payoutStatus === 'paid_out';
+    });
+
+    return {
+      adjustmentCount: adjustmentRecords.length,
+      adjustmentAmount: adjustmentRecords.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
+      advanceCount: advanceRecords.length,
+      advanceAmount: advanceRecords.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
+    };
+  }
+
   return {
     buildBulkPaymentRows,
     validateBulkPaymentSelection,
-    filterBulkPaymentEligibleMembers
+    filterBulkPaymentEligibleMembers,
+    buildMonthlyPaymentAnalytics,
+    summarizeAdjustmentsAndAdvances
   };
 });

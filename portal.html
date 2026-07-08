@@ -415,6 +415,23 @@
                         </form>
                     </div>
 
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-chart-pie"></i> Payment Analytics</h3>
+                        <p style="font-size: 0.95rem; color: #6b7280; margin-bottom: 15px;">Review monthly contribution flow and outstanding adjustment or advance items.</p>
+                        <div class="stats-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div class="stat-card" style="padding: 15px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; text-align: center;">
+                                <h4 id="paymentAnalyticsAdjustments" style="margin: 0; font-size: 1.2rem; color: #b91c1c;">KES 0</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #6b7280; font-weight: 600;">Adjustments</p>
+                            </div>
+                            <div class="stat-card" style="padding: 15px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; text-align: center;">
+                                <h4 id="paymentAnalyticsAdvances" style="margin: 0; font-size: 1.2rem; color: #047857;">KES 0</h4>
+                                <p style="margin: 5px 0 0; font-size: 0.8rem; color: #6b7280; font-weight: 600;">Advances</p>
+                            </div>
+                        </div>
+                        <div id="paymentAnalyticsChart" style="display:flex; justify-content:center; align-items:center; min-height: 260px;"></div>
+                        <div id="paymentAnalyticsLegend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top: 10px;"></div>
+                    </div>
+
                     <!-- Member Payments Directory -->
                     <div class="admin-card">
                         <h3><i class="fa-solid fa-money-check-dollar"></i> View Member Payments</h3>
