@@ -266,6 +266,16 @@ async function loadDashboard(user, preloadedMember = null) {
     } catch (err) {
         console.error('Payment analytics render error:', err);
     }
+    // Render virtual card and member-specific analytics
+    try {
+        if (typeof renderMemberPaymentsAnalytics === 'function') {
+            renderMemberPaymentsAnalytics(currentMember || user, payments || []);
+        } else if (typeof renderMemberVirtualCard === 'function') {
+            renderMemberVirtualCard(currentMember || user, payments || []);
+        }
+    } catch (err) {
+        console.error('Member virtual card render error:', err);
+    }
 }
 
 // =============================================
