@@ -661,7 +661,8 @@ function renderMemberVirtualCard(arg1, arg2) {
             }
         }
     }
-    const color = bgStyle || selectedCardColor || colorForMember(member.id || member.email || member.full_name);
+    const brandGradient = getBrandCardGradient();
+    const color = bgStyle || (selectedCardColor === 'brand' ? brandGradient : selectedCardColor) || colorForMember(member.id || member.email || member.full_name);
 
     cardEl.classList.add('virtual-card');
     cardEl.style.background = color;
@@ -742,7 +743,8 @@ function renderMemberVirtualCard(arg1, arg2) {
 }
 
 // selected color for card (state)
-let selectedCardColor = null;
+const BRAND_CARD_COLORS = ['#2563eb','#16a34a','#ef4444','#8b5cf6','#f97316','#0f766e','#0ea5a4','#111827'];
+let selectedCardColor = 'brand';
 let selectedCardTemplateId = null;
 
 const CARD_TEMPLATES = [
@@ -753,6 +755,10 @@ const CARD_TEMPLATES = [
     { id: 'sun_gold', name: 'Gold', tag: 'gold', bg: 'linear-gradient(135deg,#f59e0b,#fef3c7)', text:'#3b2714', accent:'#fce8c3' },
     { id: 'minimal_white', name: 'Minimal', tag: 'dark', bg: 'linear-gradient(135deg,#ffffff,#f3f4f6)', text:'#0f172a', accent:'#94a3b8' }
 ];
+
+function getBrandCardGradient() {
+    return `linear-gradient(135deg, ${BRAND_CARD_COLORS.map((c, idx) => `${c} ${Math.round((idx / (BRAND_CARD_COLORS.length - 1)) * 100)}%`).join(', ')})`;
+}
 
 function setupCardTemplates() {
     const container = document.getElementById('cardTemplatesContainer');
@@ -805,9 +811,24 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupCardPalette() {
     const paletteEl = document.getElementById('cardColorPalette');
     if (!paletteEl) return;
-    const palette = ['#2563eb','#16a34a','#ef4444','#8b5cf6','#f97316','#0f766e','#0ea5a4','#111827'];
+    const palette = ['brand','#2563eb','#16a34a','#ef4444','#8b5cf6','#f97316','#0f766e','#0ea5a4','#111827'];
     paletteEl.innerHTML = '';
+    // add a special "brand" swatch that uses all site colors in a blended gradient
+    const brandSw = document.createElement('div');
+    brandSw.className = 'color-swatch brand-swatch';
+    brandSw.title = 'Use site brand colors';
+    brandSw.dataset.color = 'brand';
+    brandSw.style.background = getBrandCardGradient();
+    brandSw.style.border = '2px dashed rgba(255,255,255,0.18)';
+    paletteEl.appendChild(brandSw);
+    brandSw.onclick = () => {
+        selectedCardColor = 'brand';
+        Array.from(paletteEl.children).forEach(ch => ch.classList.remove('selected'));
+        brandSw.classList.add('selected');
+        renderMemberVirtualCard(window.currentMember || { full_name: 'Member' }, window._lastMemberPayments || []);
+    };
     palette.forEach(c => {
+        if (c === 'brand') return;
         const sw = document.createElement('div');
         sw.className = 'color-swatch';
         sw.style.background = c;
@@ -828,6 +849,12 @@ function setupCardPalette() {
         };
         paletteEl.appendChild(sw);
     });
+    // mark first palette item selected by default if nothing chosen
+    if (!selectedCardColor && paletteEl.firstChild) {
+        // skip if first is site swatch
+        const first = paletteEl.querySelector('.color-swatch:not(.site-swatch)');
+        if (first) first.classList.add('selected');
+    }
 }
 
 function shadeColor(hex, percent) {
