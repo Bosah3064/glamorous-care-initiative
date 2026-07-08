@@ -353,24 +353,18 @@
                         <form id="addPaymentForm" class="admin-form">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Select Member</label>
-                                    <select id="paymentMember" required>
-                                        <option value="">— Choose a member —</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
                                     <label>Payment Type</label>
                                     <select id="paymentType" required>
                                         <option value="saving">Monthly Saving</option>
                                         <option value="registration">Registration Fee (600 KES)</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Amount (KES)</label>
                                     <input type="number" id="paymentAmount" required placeholder="200" min="1">
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Month</label>
                                     <select id="paymentMonth" required>
@@ -378,12 +372,12 @@
                                         <!-- Populated by JS -->
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Payment Date</label>
                                     <input type="date" id="paymentDate" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Status</label>
                                     <select id="paymentStatus">
@@ -392,8 +386,6 @@
                                         <option value="overdue">Overdue</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-row">
                                 <div class="form-group" id="paymentPayoutStatusContainer">
                                     <label>Payout Status <small style="font-weight:400; color:#6b7280; display:block; margin-top:4px; font-size:0.85rem;">(only for monthly savings)</small></label>
                                     <select id="paymentPayoutStatus">
@@ -408,7 +400,18 @@
                                     <input type="text" id="paymentRef" placeholder="e.g., QHL7K2BXYZ">
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Payment</button>
+
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label>Select Members</label>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+                                    <small style="color:#6b7280;">Pick the regular members you want to update with the same payment details.</small>
+                                    <button type="button" id="selectAllBulkPaymentsBtn" class="btn btn-secondary" style="padding:8px 12px; font-size:0.9rem;"><i class="fa-solid fa-check-double"></i> Select All</button>
+                                </div>
+                                <input type="text" id="bulkPaymentMemberSearch" placeholder="Search member name or email" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; font-family:'Outfit', sans-serif;">
+                                <div id="bulkPaymentMembersList" style="max-height: 260px; overflow:auto; border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#f8fafc;"></div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Payments</button>
                         </form>
                     </div>
 
@@ -702,6 +705,7 @@
 
     <script src="app.js?v=1.2"></script>
     <!-- Version 4.4.0 - Lazy-load heavy export libs -->
+    <script src="bulk-payment-utils.js"></script>
     <script src="portal.js?v=4.4"></script>
 </body>
 </html>

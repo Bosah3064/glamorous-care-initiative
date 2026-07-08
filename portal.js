@@ -9,6 +9,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Initialize Supabase client
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const bulkPaymentHelpers = window.bulkPaymentHelpers || {};
+
 // DOM Elements
 const loginView = document.getElementById('portalLogin');
 const dashboardView = document.getElementById('portalDashboard');
@@ -576,6 +578,48 @@ function renderMembersList(members, searchTerm = "") {
     }).join('');
 }
 
+function renderBulkPaymentMembers(members) {
+    const list = document.getElementById('bulkPaymentMembersList');
+    const selectAllBtn = document.getElementById('selectAllBulkPaymentsBtn');
+    const searchInput = document.getElementById('bulkPaymentMemberSearch');
+    if (!list) return;
+
+    const eligibleMembers = (bulkPaymentHelpers.filterBulkPaymentEligibleMembers || ((items) => (items || []).filter((item) => {
+        const role = (item.role || '').toString().trim().toLowerCase();
+        return role === '' || role === 'member';
+    })))(members);
+
+    const searchTerm = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
+    const filteredMembers = eligibleMembers.filter((member) => {
+        const haystack = `${member.full_name || ''} ${member.email || ''}`.toLowerCase();
+        return haystack.includes(searchTerm);
+    });
+
+    list.innerHTML = filteredMembers.length === 0
+        ? '<p style="margin:0;color:#6b7280;">No matching regular members found.</p>'
+        : filteredMembers.map((member) => `
+            <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 6px; border-bottom:1px solid #e5e7eb; cursor:pointer;">
+                <span style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" class="bulk-payment-member-checkbox" value="${member.id}" />
+                    <span>
+                        <strong>${member.full_name}</strong><br>
+                        <small style="color:#6b7280;">${member.email || 'No email'}</small>
+                    </span>
+                </span>
+            </label>
+        `).join('');
+
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            const checkboxes = list.querySelectorAll('.bulk-payment-member-checkbox');
+            const shouldSelectAll = Array.from(checkboxes).some((checkbox) => !checkbox.checked);
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = shouldSelectAll;
+            });
+        };
+    }
+}
+
 // Populate Payment Member Dropdowns
 function populateMemberDropdown(members) {
     const select = document.getElementById('paymentMember');
@@ -594,6 +638,8 @@ function populateMemberDropdown(members) {
             selectView.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
         });
     }
+
+    renderBulkPaymentMembers(members);
 }
 
 // Setup admin event listeners (only once)
@@ -613,6 +659,13 @@ function togglePaymentPayoutField(paymentType, containerId, selectId) {
 function setupAdminEventListeners() {
     if (adminListenersAttached) return;
     adminListenersAttached = true;
+
+    const bulkSearchInput = document.getElementById('bulkPaymentMemberSearch');
+    if (bulkSearchInput) {
+        bulkSearchInput.addEventListener('input', () => {
+            renderBulkPaymentMembers(allMembers);
+        });
+    }
 
     // Member Search
     const searchInput = document.getElementById('memberSearch');
@@ -686,26 +739,58 @@ function setupAdminEventListeners() {
         addPaymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const msgDiv = document.getElementById('paymentMsg');
-            const memberSelect = document.getElementById('paymentMember');
-            const selectedOption = memberSelect.options[memberSelect.selectedIndex];
-
             const paymentType = document.getElementById('paymentType').value;
             const payoutStatusValue = paymentType === 'registration' ? 'accumulating' : document.getElementById('paymentPayoutStatus').value;
+            const selectedMemberCheckboxes = Array.from(document.querySelectorAll('.bulk-payment-member-checkbox:checked'));
+            const selectedIds = selectedMemberCheckboxes.map((checkbox) => checkbox.value);
 
-            const payment = {
-                member_id: memberSelect.value,
-                member_name: selectedOption.getAttribute('data-name'),
-                amount: parseInt(document.getElementById('paymentAmount').value),
+            const validationErrors = (bulkPaymentHelpers.validateBulkPaymentSelection || ((payload) => {
+                const errors = [];
+                if (!payload.selectedIds.length) errors.push('Select at least one member.');
+                if (!payload.amount || Number(payload.amount) <= 0) errors.push('Enter a payment amount.');
+                if (!payload.month) errors.push('Select a month.');
+                if (!payload.paymentDate) errors.push('Select a payment date.');
+                return errors;
+            }))({
+                selectedIds,
+                amount: document.getElementById('paymentAmount').value,
                 month: document.getElementById('paymentMonth').value,
-                payment_date: document.getElementById('paymentDate').value,
-                status: document.getElementById('paymentStatus').value,
-                payment_type: paymentType,
-                payout_status: payoutStatusValue,
-                reference: document.getElementById('paymentRef').value || null,
-                added_by: currentMember ? currentMember.role : 'admin'
-            };
+                paymentDate: document.getElementById('paymentDate').value
+            });
 
-            const { error } = await client.from('payments').insert(payment);
+            if (validationErrors.length > 0) {
+                msgDiv.className = 'admin-msg error';
+                msgDiv.style.display = 'block';
+                msgDiv.textContent = validationErrors.join(' ');
+                setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 5000);
+                return;
+            }
+
+            const selectedMembers = allMembers.filter((member) => selectedIds.includes(member.id));
+            const payments = (bulkPaymentHelpers.buildBulkPaymentRows || ((members, payload) => members.filter((member) => selectedIds.includes(member.id)).map((member) => ({
+                member_id: member.id,
+                member_name: member.full_name,
+                amount: Number(payload.amount),
+                month: payload.month,
+                payment_date: payload.paymentDate,
+                status: payload.status,
+                payment_type: payload.paymentType,
+                payout_status: payload.payoutStatus,
+                reference: payload.reference || null,
+                added_by: payload.addedBy || 'admin'
+            }))))(selectedMembers, {
+                selectedIds,
+                amount: document.getElementById('paymentAmount').value,
+                month: document.getElementById('paymentMonth').value,
+                paymentDate: document.getElementById('paymentDate').value,
+                status: document.getElementById('paymentStatus').value,
+                paymentType,
+                payoutStatus: payoutStatusValue,
+                reference: document.getElementById('paymentRef').value || null,
+                addedBy: currentMember ? currentMember.role : 'admin'
+            });
+
+            const { error } = await client.from('payments').insert(payments);
 
             if (error) {
                 msgDiv.className = 'admin-msg error';
@@ -714,8 +799,9 @@ function setupAdminEventListeners() {
             } else {
                 msgDiv.className = 'admin-msg success';
                 msgDiv.style.display = 'block';
-                msgDiv.textContent = `✅ Payment of KES ${payment.amount} for ${payment.member_name} (${payment.month}) saved successfully!`;
+                msgDiv.textContent = `✅ ${payments.length} payment${payments.length === 1 ? '' : 's'} saved successfully for ${payments.length === 1 ? payments[0].member_name : 'the selected members'}.`;
                 addPaymentForm.reset();
+                renderBulkPaymentMembers(allMembers);
             }
 
             setTimeout(() => { msgDiv.style.display = 'none'; msgDiv.className = 'admin-msg'; }, 5000);
