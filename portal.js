@@ -641,24 +641,36 @@ function renderMemberVirtualCard(payments) {
     if (!cardEl) return;
     const member = currentMember || { full_name: 'Member', email: '', phone: '' };
     const paidTotal = (payments || []).reduce((s,p) => s + (Number(p.amount) || 0), 0);
-    const color = colorForMember(member.id || member.email || member.full_name);
+    const color = selectedCardColor || colorForMember(member.id || member.email || member.full_name);
 
+    cardEl.classList.add('virtual-card');
     cardEl.style.background = color;
+    const cardNumber = (member.member_number || member.id || '000000000000').toString();
+    const maskedNumber = '•••• ' + cardNumber.slice(-4);
+
     cardEl.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px;">
-            <img src="assets/logo.png" alt="logo" style="width:42px; height:42px; border-radius:8px; background:rgba(255,255,255,0.12); padding:6px; object-fit:contain;" />
+        <div class="card-top">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="card-chip"></div>
+                <div style="font-size:0.78rem; opacity:0.95;">Glamorous Care</div>
+            </div>
+            <img src="assets/logo.png" alt="logo" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.12); padding:6px; object-fit:contain;" />
+        </div>
+        <div class="card-number">${maskedNumber}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <div style="font-weight:700; font-size:0.95rem;">Glamorous Care</div>
-                <div style="font-size:0.78rem; opacity:0.95;">Community Card</div>
+                <div class="card-name">${member.full_name}</div>
+                <div class="card-meta">${maskValue(member.email)}${member.phone ? ' • ' + maskValue(member.phone) : ''}</div>
+            </div>
+            <div style="text-align:right; font-size:0.82rem;">
+                <div class="card-meta">Valid Thru</div>
+                <div style="font-weight:700;">12/29</div>
             </div>
         </div>
-        <div style="margin-top:8px; font-size:0.95rem; font-weight:700;">${member.full_name}</div>
-        <div style="font-size:0.85rem; opacity:0.95;">${maskValue(member.email)} ${member.phone ? '• ' + maskValue(member.phone) : ''}</div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:0.9rem;">Paid</div>
-            <div style="font-weight:700;">KES ${paidTotal.toLocaleString()}</div>
+            <div style="font-size:0.78rem; opacity:0.95;">Paid</div>
+            <div style="font-weight:800;">KES ${paidTotal.toLocaleString()}</div>
         </div>
-        <div style="font-size:0.72rem; opacity:0.95; margin-top:6px;">Member ID: ${String(member.id || '').slice(-6).padStart(3,'*')}</div>
     `;
 
     // attach download handlers
@@ -668,7 +680,7 @@ function renderMemberVirtualCard(payments) {
     if (pngBtn) {
         pngBtn.onclick = async () => {
             try {
-                const canvas = await html2canvas(cardEl, { scale: 2 });
+                const canvas = await html2canvas(cardEl, { scale: 2, backgroundColor: null });
                 const dataUrl = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.href = dataUrl;
@@ -681,7 +693,7 @@ function renderMemberVirtualCard(payments) {
     if (pdfBtn) {
         pdfBtn.onclick = async () => {
             try {
-                const canvas = await html2canvas(cardEl, { scale: 2 });
+                const canvas = await html2canvas(cardEl, { scale: 2, backgroundColor: null });
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf || {};
                 if (jsPDF) {
@@ -700,6 +712,81 @@ function renderMemberVirtualCard(payments) {
             } catch (err) { console.error('PDF export failed', err); }
         };
     }
+}
+
+// selected color for card (state)
+let selectedCardColor = null;
+
+function setupCardPalette() {
+    const paletteEl = document.getElementById('cardColorPalette');
+    if (!paletteEl) return;
+    const palette = ['#2563eb','#16a34a','#ef4444','#8b5cf6','#f97316','#0f766e','#0ea5a4','#111827'];
+    paletteEl.innerHTML = '';
+    palette.forEach(c => {
+        const sw = document.createElement('div');
+        sw.className = 'color-swatch';
+        sw.style.background = c;
+        sw.dataset.color = c;
+        sw.onclick = () => {
+            selectedCardColor = c;
+            // mark selected
+            Array.from(paletteEl.children).forEach(ch => ch.classList.remove('selected'));
+            sw.classList.add('selected');
+            // re-render card with new color
+            renderMemberVirtualCard(window.currentMember || { full_name: 'Member' }, window._lastMemberPayments || []);
+            // optionally apply to header
+            const apply = document.getElementById('applySiteColor');
+            if (apply && apply.checked) {
+                const header = document.querySelector('header.navbar');
+                if (header) header.style.background = `linear-gradient(135deg, ${c}, ${shadeColor(c, -12)})`;
+            }
+        };
+        paletteEl.appendChild(sw);
+    });
+}
+
+function shadeColor(hex, percent) {
+    // simple shade function: percent negative to darken
+    const num = parseInt(hex.replace('#',''),16);
+    let r = (num >> 16) + percent;
+    let b = ((num >> 8) & 0x00FF) + percent;
+    let g = (num & 0x0000FF) + percent;
+    r = Math.max(Math.min(255, r), 0);
+    b = Math.max(Math.min(255, b), 0);
+    g = Math.max(Math.min(255, g), 0);
+    return '#' + (g | (b << 8) | (r << 16)).toString(16).padStart(6,'0');
+}
+
+// ensure palette is ready on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+    setupCardPalette();
+});
+
+function renderMemberPaymentsAnalytics(member, payments) {
+    window._lastMemberPayments = payments || [];
+    const chartContainer = document.getElementById('memberPaymentAnalyticsChart');
+    const legendEl = document.getElementById('memberPaymentAnalyticsLegend');
+    const adjustmentsEl = document.getElementById('adjustmentsAmount');
+    const advancesEl = document.getElementById('advancesAmount');
+
+    const analytics = (bulkPaymentHelpers.buildMonthlyPaymentAnalytics || (() => []))(payments || []);
+    const summary = (bulkPaymentHelpers.summarizeAdjustmentsAndAdvances || (() => ({ adjustmentAmount:0, advanceAmount:0 })))(payments || []);
+
+    if (adjustmentsEl) adjustmentsEl.textContent = `KES ${summary.adjustmentAmount.toLocaleString()}`;
+    if (advancesEl) adjustmentsEl.textContent = `KES ${summary.advanceAmount.toLocaleString()}`;
+
+    if (!chartContainer) return;
+    if (!analytics.length) {
+        chartContainer.innerHTML = '<p style="margin:0;color:#6b7280;">No payment history yet.</p>';
+        if (legendEl) legendEl.innerHTML = '';
+    } else {
+        const total = analytics.reduce((s,a)=>s+a.amount,0) || 1;
+        chartContainer.innerHTML = `<div style="text-align:center;"><div style="font-weight:700; font-size:1rem;">KES ${Math.round(total).toLocaleString()}</div><div style="font-size:0.85rem;color:#6b7280;">Total Paid</div></div>`;
+        if (legendEl) legendEl.innerHTML = analytics.map((item, idx) => `<div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:999px;background:${['#2563eb','#16a34a','#f59e0b','#8b5cf6'][idx%4]};"></span><div>${item.label} — KES ${Math.round(item.amount).toLocaleString()}</div></div>`).join('');
+    }
+
+    // render virtual card
+    renderMemberVirtualCard(payments);
 }
 
 // Render Members Directory (Only show when filtered)

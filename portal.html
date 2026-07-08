@@ -223,8 +223,34 @@
                         <div style="flex:1; min-width:260px;">
                             <div id="memberPaymentAnalytics" style="background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px;">
                                 <h4 style="margin:0 0 8px 0; font-size:1rem;">Your Payment Progress</h4>
-                                <div id="memberPaymentAnalyticsChart" style="min-height:160px; display:flex; align-items:center; justify-content:center;"></div>
+                                <div id="memberPaymentAnalyticsChart" style="min-height:120px; display:flex; align-items:center; justify-content:center;"></div>
                                 <div id="memberPaymentAnalyticsLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:0.9rem; color:#374151;"></div>
+                                <div style="display:flex; gap:12px; margin-top:10px;">
+                                    <div style="flex:1; background:#f8fafc; border:1px solid #eef2ff; padding:10px; border-radius:8px; text-align:center;">
+                                        <div style="font-size:0.85rem; color:#6b7280;">Adjustments</div>
+                                        <div id="adjustmentsAmount" style="font-weight:800; font-size:1rem;">KES 0</div>
+                                    </div>
+                                    <div style="flex:1; background:#fff7ed; border:1px solid #ffedd5; padding:10px; border-radius:8px; text-align:center;">
+                                        <div style="font-size:0.85rem; color:#6b7280;">Advances</div>
+                                        <div id="advancesAmount" style="font-weight:800; font-size:1rem;">KES 0</div>
+                                    </div>
+                                </div>
+                                <div id="memberVirtualCardContainer" style="margin-top:12px; display:flex; gap:10px; align-items:flex-start;">
+                                    <div id="memberVirtualCard" style="width:220px; border-radius:12px; padding:12px; color:white; display:flex; flex-direction:column; gap:8px;">
+                                        <!-- virtual card rendered here -->
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; gap:8px;">
+                                        <button id="downloadCardPngBtn" class="btn btn-secondary">Download Card (PNG)</button>
+                                        <button id="downloadCardPdfBtn" class="btn btn-secondary">Download Card (PDF)</button>
+                                        <div style="display:flex; gap:6px; margin-top:6px; align-items:center;">
+                                            <div id="cardColorPalette" style="display:flex; gap:6px;"></div>
+                                        </div>
+                                        <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#6b7280;">
+                                            <input type="checkbox" id="applySiteColor" /> Apply chosen color to site header
+                                        </label>
+                                        <div style="margin-top:6px; font-size:0.85rem; color:#6b7280;">Your virtual card hides sensitive fields. You can download it for printing.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div style="flex:2; min-width:320px;">
@@ -734,6 +760,8 @@
     <script src="app.js?v=1.2"></script>
     <!-- Version 4.4.0 - Lazy-load heavy export libs -->
     <script src="bulk-payment-utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="portal.js?v=4.4"></script>
 </body>
 </html>

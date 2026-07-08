@@ -898,6 +898,32 @@ ul {
     margin-right: 6px;
 }
 
+/* Virtual membership card styles */
+.virtual-card {
+    width:220px;
+    border-radius:14px;
+    padding:14px;
+    color: white;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22), inset 0 -2px 8px rgba(0,0,0,0.12);
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+.virtual-card .card-top {
+    display:flex; justify-content:space-between; align-items:center;
+}
+.virtual-card .card-chip {
+    width:44px; height:30px; border-radius:4px; background:rgba(255,255,255,0.25); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+}
+.virtual-card .card-number {
+    letter-spacing:2px; font-weight:600; font-size:0.92rem;
+}
+.virtual-card .card-name { font-weight:800; font-size:0.95rem; }
+.virtual-card .card-meta { font-size:0.72rem; opacity:0.95; }
+.color-swatch { width:28px; height:18px; border-radius:6px; cursor:pointer; border:2px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.color-swatch.selected { outline:3px solid rgba(255,255,255,0.18); transform:translateY(-2px); }
+
 /* ===========================
    ACTIVITIES SECTION
    =========================== */
