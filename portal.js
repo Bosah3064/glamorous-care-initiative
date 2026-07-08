@@ -649,12 +649,27 @@ function renderMemberVirtualCard(arg1, arg2) {
         payments = Array.isArray(arg2) ? arg2 : [];
     }
     const paidTotal = (payments || []).reduce((s,p) => s + (Number(p.amount) || 0), 0);
-    const color = selectedCardColor || colorForMember(member.id || member.email || member.full_name);
+    // Determine background: use selected template if any, otherwise mix selected color with generated color
+    let bgStyle = null;
+    if (selectedCardTemplateId) {
+        const tpl = CARD_TEMPLATES.find(t => t.id === selectedCardTemplateId);
+        if (tpl) {
+            if (selectedCardColor) {
+                bgStyle = `linear-gradient(135deg, ${tpl.bg}, ${selectedCardColor})`;
+            } else {
+                bgStyle = tpl.bg;
+            }
+        }
+    }
+    const color = bgStyle || selectedCardColor || colorForMember(member.id || member.email || member.full_name);
 
     cardEl.classList.add('virtual-card');
     cardEl.style.background = color;
     const cardNumber = (member.member_number || member.id || '000000000000').toString();
     const maskedNumber = '•••• ' + cardNumber.slice(-4);
+
+    // compute outstanding (not-Paid) amounts
+    const outstanding = (payments || []).filter(p => (p.status || '').toLowerCase() !== 'paid').reduce((s,p) => s + (Number(p.amount) || 0), 0);
 
     cardEl.innerHTML = `
         <div class="card-top">
@@ -678,6 +693,10 @@ function renderMemberVirtualCard(arg1, arg2) {
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:0.78rem; opacity:0.95;">Paid</div>
             <div style="font-weight:800;">KES ${paidTotal.toLocaleString()}</div>
+        </div>
+        <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; opacity:0.95;">
+            <div>Outstanding</div>
+            <div style="font-weight:700; color: rgba(255,255,255,0.95);">KES ${outstanding.toLocaleString()}</div>
         </div>
     `;
 
