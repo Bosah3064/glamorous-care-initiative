@@ -636,10 +636,18 @@ function colorForMember(id) {
     return colors[Math.abs(hash) % colors.length];
 }
 
-function renderMemberVirtualCard(payments) {
+function renderMemberVirtualCard(arg1, arg2) {
     const cardEl = document.getElementById('memberVirtualCard');
     if (!cardEl) return;
-    const member = currentMember || { full_name: 'Member', email: '', phone: '' };
+    // Support two signatures: renderMemberVirtualCard(paymentsArray) or renderMemberVirtualCard(member, paymentsArray)
+    let member = currentMember || { full_name: 'Member', email: '', phone: '' };
+    let payments = [];
+    if (Array.isArray(arg1)) {
+        payments = arg1;
+    } else if (arg1 && typeof arg1 === 'object') {
+        member = arg1;
+        payments = Array.isArray(arg2) ? arg2 : [];
+    }
     const paidTotal = (payments || []).reduce((s,p) => s + (Number(p.amount) || 0), 0);
     const color = selectedCardColor || colorForMember(member.id || member.email || member.full_name);
 
