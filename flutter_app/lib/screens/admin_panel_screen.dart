@@ -13,13 +13,29 @@ class AdminPanelScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            Text('Admin actions',
+          children: [
+            const Text('Admin actions',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 18),
-            ActionTile(icon: Icons.group, label: 'Manage Members'),
-            ActionTile(icon: Icons.receipt_long, label: 'Manage Payments'),
-            ActionTile(icon: Icons.file_upload, label: 'Import Data'),
+            const SizedBox(height: 18),
+            ActionTile(
+              icon: Icons.group,
+              label: 'Manage Members',
+              onTap: () => Navigator.pushNamed(context, '/manage-members'),
+            ),
+            ActionTile(
+              icon: Icons.receipt_long,
+              label: 'Manage Payments',
+              onTap: () => Navigator.pushNamed(context, '/manage-payments'),
+            ),
+            ActionTile(
+              icon: Icons.file_upload,
+              label: 'Import Data',
+              onTap: () {
+                // Placeholder: implement import flow (file picker / API)
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Import Data not implemented yet')));
+              },
+            ),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import '../services/supabase_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   static const route = '/reset-password';
@@ -10,88 +11,24 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+  final emailController = TextEditingController();
   bool isLoading = false;
-  bool showPassword = false;
-  bool showConfirmPassword = false;
-  String strengthLabel = '';
-  int strengthLevel = 0;
-  String matchMessage = '';
-  Color matchColor = Colors.black54;
-
-  void updateStrength(String password) {
-    var strength = 0;
-    if (password.length >= 6) strength += 1;
-    if (password.length >= 10) strength += 1;
-    if (RegExp(r'[A-Z]').hasMatch(password)) strength += 1;
-    if (RegExp(r'[0-9]').hasMatch(password)) strength += 1;
-    if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 1;
-    if (strength > 4) strength = 4;
-
-    final label = strength == 0
-        ? ''
-        : strength == 1
-            ? 'Weak'
-            : strength == 2
-                ? 'Fair'
-                : strength == 3
-                    ? 'Good'
-                    : 'Strong';
-
-    setState(() {
-      strengthLevel = strength;
-      strengthLabel = label;
-    });
-  }
-
-  void checkMatch() {
-    final pwd1 = newPasswordController.text;
-    final pwd2 = confirmPasswordController.text;
-
-    if (pwd2.isEmpty) {
-      setState(() {
-        matchMessage = '';
-      });
-      return;
-    }
-
-    if (pwd1 == pwd2) {
-      setState(() {
-        matchMessage = 'Passwords match';
-        matchColor = Colors.green;
-      });
-    } else {
-      setState(() {
-        matchMessage = 'Passwords do not match';
-        matchColor = Colors.red;
-      });
-    }
-  }
 
   void resetPassword() async {
-    final newPassword = newPasswordController.text;
-    final confirmPassword = confirmPasswordController.text;
-
-    if (newPassword.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Password must be at least 6 characters.')));
-      return;
-    }
-
-    if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passwords do not match.')));
-      return;
-    }
-
+    final email = emailController.text.trim();
+    if (email.isEmpty) return;
     setState(() => isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    setState(() => isLoading = false);
-
-    if (!mounted) return;
-
-    Navigator.pushReplacementNamed(context, '/dashboard');
+    try {
+      await SupabaseService.resetPasswordForEmail(email);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent.')));
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Reset failed: $e')));
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -105,55 +42,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Set a strong password',
+              const Text('Reset your password',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              const Text(
-                'Use a secure password and confirm it before continuing.',
-                style: TextStyle(color: Colors.black54),
-              ),
-              const SizedBox(height: 32),
+              const Text('Enter your email to receive a password reset link.',
+                  style: TextStyle(color: Colors.black54)),
+              const SizedBox(height: 24),
               TextField(
-                controller: newPasswordController,
-                obscureText: !showPassword,
-                onChanged: (value) {
-                  updateStrength(value);
-                  checkMatch();
-                },
-                decoration: InputDecoration(
-                  labelText: 'New Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        showPassword ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => showPassword = !showPassword),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              PasswordStrengthMeter(level: strengthLevel, label: strengthLabel),
-              const SizedBox(height: 20),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: !showConfirmPassword,
-                onChanged: (_) => checkMatch(),
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(showConfirmPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () => setState(
-                        () => showConfirmPassword = !showConfirmPassword),
-                  ),
-                ),
-              ),
-              if (matchMessage.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(matchMessage, style: TextStyle(color: matchColor)),
-              ],
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                      labelText: 'Email', prefixIcon: Icon(Icons.email))),
               const SizedBox(height: 28),
               ElevatedButton(
                 onPressed: isLoading ? null : resetPassword,
@@ -162,9 +61,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5),
-                      )
-                    : const Text('Reset Password'),
+                            color: Colors.white, strokeWidth: 2.5))
+                    : const Text('Send reset email'),
               ),
             ],
           ),

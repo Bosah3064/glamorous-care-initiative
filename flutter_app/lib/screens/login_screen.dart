@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'reset_password_screen.dart';
+import '../services/supabase_service.dart';
 
 class LoginScreen extends StatefulWidget {
   static const route = '/login';
@@ -18,10 +19,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void signIn() async {
     setState(() => isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    setState(() => isLoading = false);
-    if (mounted) {
+    try {
+      await SupabaseService.signIn(
+          emailController.text.trim(), passwordController.text);
       Navigator.pushReplacementNamed(context, DashboardScreen.route);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Sign in failed: $e')));
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 

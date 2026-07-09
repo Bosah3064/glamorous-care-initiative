@@ -898,75 +898,229 @@ ul {
     margin-right: 6px;
 }
 
-/* Virtual membership card styles */
+/* ====== PREMIUM VIRTUAL MEMBERSHIP CARD ====== */
 .virtual-card {
-    width:340px;
-    min-width:340px;
-    max-width:340px;
-    min-height:200px;
-    border-radius:16px;
-    padding:18px;
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+    aspect-ratio: 85.6 / 54;
+    border-radius: 16px;
+    padding: 24px 22px 20px;
     color: white;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.22), inset 0 -3px 12px rgba(0,0,0,0.14);
-    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-    transition: transform 160ms ease;
-    flex: 0 0 340px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow:
+        0 20px 60px rgba(29, 95, 153, 0.35),
+        0 4px 16px rgba(104, 54, 105, 0.2),
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        inset 0 -2px 8px rgba(0,0,0,0.15);
+    font-family: 'Inter', 'SF Pro Display', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    transition: transform 280ms cubic-bezier(.22,1,.36,1), box-shadow 280ms ease;
+    flex: 0 0 380px;
+    position: relative;
+    overflow: hidden;
+    background-size: 100% 100%;
 }
+.virtual-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow:
+        0 28px 70px rgba(29, 95, 153, 0.4),
+        0 8px 24px rgba(104, 54, 105, 0.25),
+        inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Subtle pattern overlay */
+.virtual-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background:
+        radial-gradient(ellipse 120% 80% at 20% 0%, rgba(255,255,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 80% 100%, rgba(0,0,0,0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Holographic rainbow strip along the top */
+.virtual-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(90deg,
+        #ff006640, #ff660040, #ffff0040, #00ff0040,
+        #0000ff40, #ff00ff40, #ff006640);
+    background-size: 200% 100%;
+    animation: holoShimmer 4s linear infinite;
+    z-index: 2;
+}
+@keyframes holoShimmer {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.virtual-card > * { position: relative; z-index: 3; }
+
+/* ---- TOP ROW: Chip + Brand ---- */
 .virtual-card .card-top {
-    display:flex; justify-content:space-between; align-items:center;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
+
+/* === REALISTIC EMV CHIP with contact pads === */
 .virtual-card .card-chip {
-    width:64px; height:44px; border-radius:6px; background: linear-gradient(135deg,#eceff1,#c7cbd3); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12), 0 8px 18px rgba(2,6,23,0.14);
-    display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; padding:6px;
+    width: 52px;
+    height: 40px;
+    border-radius: 7px;
+    background: linear-gradient(145deg, #e8d5a3, #c9a84c, #e8d5a3);
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.5),
+        inset 0 -1px 0 rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
 }
-
+/* Contact pad pattern — the 8-segment grid lines */
 .virtual-card .card-chip::before {
-    /* fine horizontal contacts / stripes for metallic feel */
     content: '';
     position: absolute;
-    left: 8px;
-    top: 10px;
-    width: 44px;
-    height: 24px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.96), rgba(200,200,200,0.9));
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.12);
-    background-image: linear-gradient(90deg, rgba(255,255,255,0.92), rgba(200,200,200,0.82)), repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0 2px, rgba(255,255,255,0.03) 2px 4px);
-    transform: rotate(-10deg);
+    inset: 5px 6px;
+    border: 1.5px solid rgba(160, 120, 40, 0.5);
+    border-radius: 3px;
+    /* Horizontal center divider */
+    background:
+        linear-gradient(0deg,
+            transparent calc(50% - 0.75px),
+            rgba(160, 120, 40, 0.5) calc(50% - 0.75px),
+            rgba(160, 120, 40, 0.5) calc(50% + 0.75px),
+            transparent calc(50% + 0.75px));
+}
+.virtual-card .card-chip::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1.5px;
+    height: calc(100% - 10px);
+    background: rgba(160, 120, 40, 0.5);
 }
 
-.virtual-card .card-chip::after {
-    /* subtle highlight / bevel */
+/* NFC Contactless icon */
+.virtual-card .nfc-icon {
+    width: 24px;
+    height: 24px;
+    position: relative;
+    margin-left: 10px;
+    opacity: 0.7;
+}
+.virtual-card .nfc-icon::before,
+.virtual-card .nfc-icon::after,
+.virtual-card .nfc-icon span {
     content: '';
     position: absolute;
-    left: 8px;
-    top: 8px;
-    width: 38px;
-    height: 26px;
-    border-radius: 2px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(230,230,230,0.78));
-    mix-blend-mode: overlay;
-    opacity: 0.96;
+    border: 2px solid currentColor;
+    border-left: none;
+    border-bottom: none;
+    border-radius: 0 50% 0 0;
 }
+.virtual-card .nfc-icon::before {
+    width: 8px; height: 8px; bottom: 4px; left: 4px;
+}
+.virtual-card .nfc-icon::after {
+    width: 14px; height: 14px; bottom: 4px; left: 4px;
+}
+.virtual-card .nfc-icon span {
+    width: 20px; height: 20px; bottom: 4px; left: 4px;
+}
+
+/* Card number */
 .virtual-card .card-number {
-    letter-spacing:3px; font-weight:700; font-size:1.08rem;
+    letter-spacing: 4px;
+    font-weight: 600;
+    font-size: 1.15rem;
+    font-feature-settings: 'tnum' 1;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-.virtual-card .card-name { font-weight:800; font-size:1.02rem; }
-.virtual-card .card-meta { font-size:0.72rem; opacity:0.95; }
-.color-swatch { width:28px; height:18px; border-radius:6px; cursor:pointer; border:2px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-.color-swatch.selected { outline:3px solid rgba(255,255,255,0.18); transform:translateY(-2px); }
+
+/* Cardholder name */
+.virtual-card .card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Small meta text */
+.virtual-card .card-meta {
+    font-size: 0.68rem;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* Holographic sticker (bottom right) */
+.virtual-card .holo-sticker {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 0deg,
+        rgba(255,0,128,0.3),
+        rgba(0,128,255,0.3),
+        rgba(0,255,128,0.3),
+        rgba(255,255,0,0.3),
+        rgba(255,0,128,0.3)
+    );
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.2);
+    animation: holoRotate 6s linear infinite;
+    box-shadow: 0 0 12px rgba(255,255,255,0.1);
+}
+@keyframes holoRotate {
+    0% { background: conic-gradient(from 0deg, rgba(255,0,128,0.3), rgba(0,128,255,0.3), rgba(0,255,128,0.3), rgba(255,255,0,0.3), rgba(255,0,128,0.3)); }
+    50% { background: conic-gradient(from 180deg, rgba(255,0,128,0.3), rgba(0,128,255,0.3), rgba(0,255,128,0.3), rgba(255,255,0,0.3), rgba(255,0,128,0.3)); }
+    100% { background: conic-gradient(from 360deg, rgba(255,0,128,0.3), rgba(0,128,255,0.3), rgba(0,255,128,0.3), rgba(255,255,0,0.3), rgba(255,0,128,0.3)); }
+}
+
+/* Amount / balance styling on card */
+.virtual-card .card-balance {
+    font-size: 0.78rem;
+    opacity: 0.9;
+}
+.virtual-card .card-balance-amount {
+    font-weight: 800;
+    font-size: 1rem;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Color swatches */
+.color-swatch { width: 28px; height: 18px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transition: transform 150ms ease; }
+.color-swatch:hover { transform: translateY(-2px) scale(1.1); }
+.color-swatch.selected { outline: 3px solid rgba(255,255,255,0.18); transform: translateY(-2px); }
 
 /* Template thumbnails */
-.template-thumb { width:64px; height:40px; border-radius:8px; cursor:pointer; border:2px solid transparent; box-shadow: 0 4px 12px rgba(2,6,23,0.08); display:flex; align-items:center; justify-content:center; overflow:hidden; }
-.template-thumb.selected { border-color: var(--color-blue); transform: translateY(-4px); }
-.template-preview { width:100%; height:100%; display:block; }
+.template-thumb { width: 64px; height: 40px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(2,6,23,0.08); display: flex; align-items: center; justify-content: center; overflow: hidden; transition: transform 150ms ease, border-color 150ms ease; }
+.template-thumb:hover { transform: translateY(-2px); border-color: rgba(29,95,153,0.3); }
+.template-thumb.selected { border-color: var(--color-blue); transform: translateY(-4px); box-shadow: 0 6px 20px rgba(29,95,153,0.2); }
+.template-preview { width: 100%; height: 100%; display: block; }
 
-/* realistic card extras */
-.virtual-card .mag-stripe { height:32px; background:linear-gradient(90deg,#222 0%, #111 100%); margin-top:8px; border-radius:4px; }
-.virtual-card .holo { width:36px; height:20px; border-radius:4px; background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.6), rgba(255,255,255,0.05)); opacity:0.9; }
+/* Responsive card sizing */
+@media (max-width: 480px) {
+    .virtual-card {
+        width: 100%;
+        min-width: unset;
+        max-width: 100%;
+        flex: 1 1 auto;
+    }
+}
 
 /* ===========================
    ACTIVITIES SECTION

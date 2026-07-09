@@ -10,7 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  supabase_flutter: ^1.0.0
+  supabase_flutter: ^2.16.0
+  flutter_dotenv: ^5.0.2
+
+dependency_overrides:
+  sign_in_with_apple: ^8.1.0
+  sign_in_with_apple_platform_interface: ^2.0.0
+  sign_in_with_apple_web: ^3.0.0
 
 dev_dependencies:
   flutter_test:

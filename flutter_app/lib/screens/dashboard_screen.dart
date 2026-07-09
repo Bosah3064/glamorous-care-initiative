@@ -5,23 +5,43 @@ import '../widgets/summary_card.dart';
 import '../widgets/action_tile.dart';
 import 'payment_history_screen.dart';
 import 'admin_panel_screen.dart';
+import 'settings_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   static const route = '/dashboard';
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _currentIndex = 0;
+
+  void _onNavTap(int index) {
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+    if (index == 1) {
+      Navigator.pushNamed(context, PaymentHistoryScreen.route);
+    } else if (index == 2) {
+      Navigator.pushNamed(context, AdminPanelScreen.route);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings_outlined),
-            onPressed: () =>
-                Navigator.pushNamed(context, AdminPanelScreen.route),
-          ),
-        ],
+        title: Row(
+          children: const [
+            CircleAvatar(
+                backgroundColor: AppColors.purple,
+                child: Icon(Icons.person, color: Colors.white, size: 18)),
+            SizedBox(width: 12),
+            Text('Dashboard'),
+          ],
+        ),
+        elevation: 1,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -30,55 +50,56 @@ class DashboardScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const AppBranding(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               const Text('Hello, Lameck',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              const Text('Here is your payment summary and recent activity.',
+              const Text('Payment summary and recent activity',
                   style: TextStyle(color: Colors.black54)),
-              const SizedBox(height: 24),
-              Row(
+              const SizedBox(height: 18),
+              Column(
                 children: const [
-                  Expanded(
-                      child: SummaryCard(
-                          title: 'Paid',
-                          amount: 'KES 600',
-                          icon: Icons.check_circle,
-                          color: AppColors.primary)),
-                  SizedBox(width: 16),
-                  Expanded(
-                      child: SummaryCard(
-                          title: 'Pending',
-                          amount: '0',
-                          icon: Icons.pending_actions,
-                          color: AppColors.purple)),
+                  SummaryCard(
+                      title: 'Paid',
+                      amount: 'KES 600',
+                      icon: Icons.check_circle,
+                      color: AppColors.primary),
+                  SizedBox(height: 12),
+                  SummaryCard(
+                      title: 'Pending',
+                      amount: '0',
+                      icon: Icons.pending_actions,
+                      color: AppColors.purple),
+                  SizedBox(height: 12),
+                  SummaryCard(
+                      title: 'Total Savings',
+                      amount: 'KES 0',
+                      icon: Icons.savings,
+                      color: AppColors.red),
                 ],
               ),
-              const SizedBox(height: 16),
-              const SummaryCard(
-                  title: 'Total Savings',
-                  amount: 'KES 0',
-                  icon: Icons.savings,
-                  color: AppColors.red),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, PaymentHistoryScreen.route),
-                child: const Text('View Payment History'),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, PaymentHistoryScreen.route),
+                  child: const Text('View Payment History'),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18)),
+                    borderRadius: BorderRadius.circular(14)),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: const [
                       Text('Quick actions',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 14),
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 8),
                       ActionTile(
                           icon: Icons.person_add_alt_1, label: 'Add Member'),
                       ActionTile(icon: Icons.payment, label: 'Record Payment'),
@@ -89,6 +110,33 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showModalBottomSheet(
+            context: context,
+            builder: (_) => Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    ListTile(
+                        leading: const Icon(Icons.person_add),
+                        title: const Text('Add Member')),
+                    ListTile(
+                        leading: const Icon(Icons.payment),
+                        title: const Text('Record Payment')),
+                  ]),
+                )),
+        label: const Text('Actions'),
+        icon: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavTap,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: 'Payments'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.admin_panel_settings), label: 'Admin'),
+        ],
       ),
     );
   }

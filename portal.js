@@ -667,37 +667,63 @@ function renderMemberVirtualCard(arg1, arg2) {
     cardEl.classList.add('virtual-card');
     cardEl.style.background = color;
     const cardNumber = (member.member_number || member.id || '000000000000').toString();
-    const maskedNumber = '•••• ' + cardNumber.slice(-4);
+    // Format as 4-digit groups for realism
+    const last8 = cardNumber.replace(/[^a-zA-Z0-9]/g, '').slice(-8).padStart(8, '0');
+    const formattedNumber = `•••• •••• ${last8.slice(0,4)} ${last8.slice(4)}`;
 
     // compute outstanding (not-Paid) amounts
     const outstanding = (payments || []).filter(p => (p.status || '').toLowerCase() !== 'paid').reduce((s,p) => s + (Number(p.amount) || 0), 0);
 
+    // Determine member since date
+    const joinDate = member.join_date ? new Date(member.join_date) : new Date();
+    const memberSince = joinDate.toLocaleDateString('en-KE', { month: 'short', year: 'numeric' });
+
     cardEl.innerHTML = `
+        <!-- TOP ROW: Chip + NFC + Logo -->
         <div class="card-top">
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="card-chip"></div>
-                <div style="font-size:0.78rem; opacity:0.95;">Glamorous Care</div>
+                <div class="nfc-icon" title="Contactless"><span></span></div>
             </div>
-            <img src="assets/logo.png" alt="logo" style="width:38px; height:38px; border-radius:8px; background:rgba(255,255,255,0.12); padding:6px; object-fit:contain;" />
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="text-align:right;">
+                    <div style="font-size:0.65rem; opacity:0.7; letter-spacing:1px; text-transform:uppercase;">Membership</div>
+                    <div style="font-weight:700; font-size:0.85rem; letter-spacing:1.5px;">GLAMOROUS CARE</div>
+                </div>
+                <img src="assets/logo.png" alt="GCI" style="width:34px; height:34px; border-radius:8px; background:rgba(255,255,255,0.15); padding:4px; object-fit:contain;" onerror="this.style.display='none'" />
+            </div>
         </div>
-        <div class="card-number">${maskedNumber}</div>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
+
+        <!-- CARD NUMBER -->
+        <div class="card-number">${formattedNumber}</div>
+
+        <!-- BOTTOM: Name + Valid Thru + Holo -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+            <div style="flex:1;">
+                <div class="card-meta">Card Holder</div>
                 <div class="card-name">${member.full_name}</div>
-                <div class="card-meta">${maskValue(member.email)}${member.phone ? ' • ' + maskValue(member.phone) : ''}</div>
             </div>
-            <div style="text-align:right; font-size:0.82rem;">
+            <div style="text-align:center;">
                 <div class="card-meta">Valid Thru</div>
-                <div style="font-weight:700;">12/29</div>
+                <div style="font-weight:700; font-size:0.9rem; letter-spacing:1px;">12/29</div>
             </div>
+            <div style="text-align:center; margin-left:14px;">
+                <div class="card-meta">Member Since</div>
+                <div style="font-weight:600; font-size:0.82rem;">${memberSince}</div>
+            </div>
+            <div class="holo-sticker" style="margin-left:12px;" title="Security hologram"></div>
         </div>
-        <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:0.78rem; opacity:0.95;">Paid</div>
-            <div style="font-weight:800;">KES ${paidTotal.toLocaleString()}</div>
-        </div>
-        <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; opacity:0.95;">
-            <div>Outstanding</div>
-            <div style="font-weight:700; color: rgba(255,255,255,0.95);">KES ${outstanding.toLocaleString()}</div>
+
+        <!-- BALANCE BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.12);">
+            <div>
+                <div class="card-balance">Total Paid</div>
+                <div class="card-balance-amount">KES ${paidTotal.toLocaleString()}</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="card-balance">Outstanding</div>
+                <div class="card-balance-amount" style="color: ${outstanding > 0 ? 'rgba(255,200,200,0.95)' : 'rgba(200,255,200,0.95)'};">KES ${outstanding.toLocaleString()}</div>
+            </div>
         </div>
     `;
 
@@ -743,17 +769,18 @@ function renderMemberVirtualCard(arg1, arg2) {
 }
 
 // selected color for card (state)
-const BRAND_CARD_COLORS = ['#2563eb','#16a34a','#ef4444','#8b5cf6','#f97316','#0f766e','#0ea5a4','#111827'];
+const BRAND_CARD_COLORS = ['#1d5f99','#683669','#a5243d']; // GCI brand: blue, purple, red
 let selectedCardColor = 'brand';
 let selectedCardTemplateId = null;
 
 const CARD_TEMPLATES = [
-    { id: 'modern_blue', name: 'Modern Blue', tag: 'blue', bg: 'linear-gradient(135deg,#2563eb,#60a5fa)', text:'#fff', accent:'#93c5fd' },
-    { id: 'classic_black', name: 'Classic Black', tag: 'dark', bg: 'linear-gradient(90deg,#111827,#0f172a)', text:'#fff', accent:'#94a3b8' },
-    { id: 'emerald', name: 'Emerald', tag: 'green', bg: 'linear-gradient(135deg,#16a34a,#86efac)', text:'#062a17', accent:'#bbf7d0' },
-    { id: 'royal_purple', name: 'Royal', tag: 'purple', bg: 'linear-gradient(135deg,#7c3aed,#a78bfa)', text:'#fff', accent:'#e9d5ff' },
-    { id: 'sun_gold', name: 'Gold', tag: 'gold', bg: 'linear-gradient(135deg,#f59e0b,#fef3c7)', text:'#3b2714', accent:'#fce8c3' },
-    { id: 'minimal_white', name: 'Minimal', tag: 'dark', bg: 'linear-gradient(135deg,#ffffff,#f3f4f6)', text:'#0f172a', accent:'#94a3b8' }
+    { id: 'gci_brand', name: 'GCI Brand', tag: 'brand', bg: 'linear-gradient(135deg, #1d5f99 0%, #683669 50%, #a5243d 100%)', text:'#fff', accent:'#c9a84c' },
+    { id: 'gci_blue', name: 'GCI Blue', tag: 'blue', bg: 'linear-gradient(135deg, #1d5f99 0%, #2980b9 50%, #1d5f99 100%)', text:'#fff', accent:'#93c5fd' },
+    { id: 'gci_purple', name: 'GCI Purple', tag: 'purple', bg: 'linear-gradient(135deg, #683669 0%, #8b5cf6 50%, #683669 100%)', text:'#fff', accent:'#e9d5ff' },
+    { id: 'gci_red', name: 'GCI Red', tag: 'red', bg: 'linear-gradient(135deg, #a5243d 0%, #e74c3c 50%, #a5243d 100%)', text:'#fff', accent:'#fecaca' },
+    { id: 'classic_black', name: 'Prestige Black', tag: 'dark', bg: 'linear-gradient(135deg, #111827 0%, #1f2937 40%, #0f172a 100%)', text:'#fff', accent:'#94a3b8' },
+    { id: 'platinum', name: 'Platinum', tag: 'dark', bg: 'linear-gradient(145deg, #e2e8f0 0%, #94a3b8 30%, #cbd5e1 60%, #e2e8f0 100%)', text:'#1e293b', accent:'#475569' },
+    { id: 'sun_gold', name: 'Gold', tag: 'gold', bg: 'linear-gradient(135deg, #b8860b 0%, #daa520 40%, #ffd700 70%, #daa520 100%)', text:'#3b2714', accent:'#fce8c3' },
 ];
 
 function getBrandCardGradient() {
@@ -953,24 +980,23 @@ function renderMembersList(members, searchTerm = "") {
 function renderBulkPaymentMembers(members) {
     const list = document.getElementById('bulkPaymentMembersList');
     const selectAllBtn = document.getElementById('selectAllBulkPaymentsBtn');
-    const searchInput = document.getElementById('bulkPaymentMemberSearch');
+    
+    // We don't filter based on search here anymore, we just render all eligible ONCE.
+    // The search listener will just hide/show them.
     if (!list) return;
+
+    // Only render if list is currently empty to preserve selections, or if forcing a fresh render
+    if (list.innerHTML.trim() !== '') return;
 
     const eligibleMembers = (bulkPaymentHelpers.filterBulkPaymentEligibleMembers || ((items) => (items || []).filter((item) => {
         const role = (item.role || '').toString().trim().toLowerCase();
         return role === '' || role === 'member';
     })))(members);
 
-    const searchTerm = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
-    const filteredMembers = eligibleMembers.filter((member) => {
-        const haystack = `${member.full_name || ''} ${member.email || ''}`.toLowerCase();
-        return haystack.includes(searchTerm);
-    });
-
-    list.innerHTML = filteredMembers.length === 0
+    list.innerHTML = eligibleMembers.length === 0
         ? '<p style="margin:0;color:#6b7280;">No matching regular members found.</p>'
-        : filteredMembers.map((member) => `
-            <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 6px; border-bottom:1px solid #e5e7eb; cursor:pointer;">
+        : eligibleMembers.map((member) => `
+            <label class="bulk-member-row" data-search="${(member.full_name || '')} ${(member.email || '')}".toLowerCase() style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 6px; border-bottom:1px solid #e5e7eb; cursor:pointer;">
                 <span style="display:flex; align-items:center; gap:8px;">
                     <input type="checkbox" class="bulk-payment-member-checkbox" value="${member.id}" />
                     <span>
@@ -983,9 +1009,11 @@ function renderBulkPaymentMembers(members) {
 
     if (selectAllBtn) {
         selectAllBtn.onclick = () => {
-            const checkboxes = list.querySelectorAll('.bulk-payment-member-checkbox');
-            const shouldSelectAll = Array.from(checkboxes).some((checkbox) => !checkbox.checked);
-            checkboxes.forEach((checkbox) => {
+            // Only select visible checkboxes
+            const visibleRows = Array.from(list.querySelectorAll('.bulk-member-row')).filter(row => row.style.display !== 'none');
+            const visibleCheckboxes = visibleRows.map(row => row.querySelector('.bulk-payment-member-checkbox'));
+            const shouldSelectAll = visibleCheckboxes.some((checkbox) => !checkbox.checked);
+            visibleCheckboxes.forEach((checkbox) => {
                 checkbox.checked = shouldSelectAll;
             });
         };
@@ -1011,6 +1039,9 @@ function populateMemberDropdown(members) {
         });
     }
 
+    // Force a fresh render by clearing HTML
+    const bulkList = document.getElementById('bulkPaymentMembersList');
+    if (bulkList) bulkList.innerHTML = '';
     renderBulkPaymentMembers(members);
 }
 
@@ -1034,8 +1065,19 @@ function setupAdminEventListeners() {
 
     const bulkSearchInput = document.getElementById('bulkPaymentMemberSearch');
     if (bulkSearchInput) {
-        bulkSearchInput.addEventListener('input', () => {
-            renderBulkPaymentMembers(allMembers);
+        bulkSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const list = document.getElementById('bulkPaymentMembersList');
+            if (!list) return;
+            const rows = list.querySelectorAll('.bulk-member-row');
+            rows.forEach(row => {
+                const searchData = row.getAttribute('data-search') || '';
+                if (searchData.includes(term)) {
+                    row.style.display = 'flex';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
     }
 
