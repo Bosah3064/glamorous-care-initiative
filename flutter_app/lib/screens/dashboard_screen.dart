@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:confetti/confetti.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../app_colors.dart';
 import '../services/supabase_service.dart';
+import '../services/offline_cache_service.dart';
 import '../widgets/virtual_card.dart';
 import '../widgets/summary_card.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'payment_history_screen.dart';
 import 'settings_screen.dart';
+import 'notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   static const route = '/dashboard';
@@ -18,14 +31,96 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   bool _isLoading = true;
-  bool _balancesVisible = true;
+  bool _balancesVisible = false;
   Map<String, dynamic>? _member;
   List<Map<String, dynamic>> _payments = [];
+  late ConfettiController _confettiController;
+  final ScreenshotController _screenshotController = ScreenshotController();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  int _unreadNotifications = 0;
+  bool _hasCheckedProfile = false;
+  bool _isOffline = false;
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationSub;
 
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     _loadData();
+    _playCelebration();
+  }
+
+  void _playCelebration() async {
+    // We try to play a sound. If it fails (e.g. no asset), we just vibrate.
+    try {
+      HapticFeedback.heavyImpact();
+      _confettiController.play();
+      await _audioPlayer.play(AssetSource('sounds/success.wav'));
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _audioPlayer.dispose();
+    _notificationSub?.cancel();
+    super.dispose();
+  }
+
+  void _setupNotificationStream(String memberId) {
+    _notificationSub?.cancel();
+    _notificationSub = SupabaseService.notificationsStream(memberId).listen((notifs) {
+      if (!mounted) return;
+      
+      final unreadNotifs = notifs.where((n) => n['is_read'] == false).toList();
+      final newUnreadCount = unreadNotifs.length;
+      
+      if (newUnreadCount > _unreadNotifications && _unreadNotifications != 0) {
+        // A new notification arrived!
+        final newest = unreadNotifs.first;
+        _showLiveNotificationPopup(newest);
+      }
+      
+      setState(() {
+        _unreadNotifications = newUnreadCount;
+      });
+    });
+  }
+
+  void _showLiveNotificationPopup(Map<String, dynamic> notif) {
+    // Play sound and vibrate
+    HapticFeedback.mediumImpact();
+    _audioPlayer.play(AssetSource('sounds/success.wav'));
+    
+    final title = notif['title']?.toString() ?? 'New Notification';
+    final message = notif['message']?.toString() ?? '';
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.notifications_active, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 14)),
+                  Text(message, style: GoogleFonts.outfit(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(top: 10, left: 16, right: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+        dismissDirection: DismissDirection.up,
+      ),
+    );
   }
 
   Future<void> _loadData() async {
@@ -33,21 +128,470 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final member = await SupabaseService.fetchCurrentMember();
       List<Map<String, dynamic>> payments = [];
+      int unreadCount = 0;
       if (member != null) {
         payments = await SupabaseService.fetchMemberPayments(member['id']);
+        unreadCount = await SupabaseService.countUnreadNotifications(member['id']);
+        // Cache for offline use
+        await OfflineCacheService.cacheMember(member);
+        await OfflineCacheService.cachePayments(payments);
       }
       if (mounted) {
         setState(() {
           _member = member;
           _payments = payments;
+          _unreadNotifications = unreadCount;
           _isLoading = false;
+          _isOffline = false;
         });
+        
+        if (member != null) {
+          _setupNotificationStream(member['id']);
+        }
+        
+        if (!_hasCheckedProfile) {
+          _hasCheckedProfile = true;
+          _checkProfileCompletion();
+        }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      // Offline fallback: load from cache
+      try {
+        final cachedMember = await OfflineCacheService.getCachedMember();
+        final cachedPayments = await OfflineCacheService.getCachedPayments();
+        if (mounted) {
+          setState(() {
+            _member = cachedMember;
+            _payments = cachedPayments;
+            _isLoading = false;
+            _isOffline = true;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
+  }
+
+  // === Profile schema matching the website's canonicalFields ===
+  // Each required field: { key, label, isFieldOnMember (phone lives on members table) }
+  static const _profileFields = [
+    {'key': 'phone', 'label': 'Phone Number', 'isFieldOnMember': true},
+    {'key': 'date_of_birth', 'label': 'Date of Birth', 'isFieldOnMember': false},
+    {'key': 'gender', 'label': 'Gender', 'isFieldOnMember': false},
+    {'key': 'marital_status', 'label': 'Marital Status', 'isFieldOnMember': false},
+    {'key': 'national_id_number', 'label': 'National ID Number', 'isFieldOnMember': false},
+    {'key': 'occupation', 'label': 'Occupation', 'isFieldOnMember': false},
+    {'key': 'next_of_kin_full_name', 'label': 'Next of Kin Name', 'isFieldOnMember': false},
+    {'key': 'next_of_kin_national_id_number', 'label': 'Next of Kin ID', 'isFieldOnMember': false},
+    {'key': 'next_of_kin_phone_number', 'label': 'Next of Kin Phone', 'isFieldOnMember': false},
+    {'key': 'relationship_to_you', 'label': 'Relationship to Next of Kin', 'isFieldOnMember': false},
+  ];
+
+  // Match website's variationsMap — check legacy field name variations
+  static const _variationsMap = {
+    'date_of_birth': ['date of birth', 'dob', 'date_of_birth'],
+    'gender': ['gender'],
+    'marital_status': ['marital status', 'marital_status'],
+    'national_id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
+    'occupation': ['occupation', 'profession', 'occupation/profession'],
+    'next_of_kin_full_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
+    'next_of_kin_national_id_number': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
+    'next_of_kin_phone_number': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
+    'relationship_to_you': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship', 'next_of_kin_relationship'],
+  };
+
+  /// Resolve a field value from form_details using canonical key + variations (matches website)
+  String _resolveFieldValue(Map<String, dynamic> fd, String canonicalKey) {
+    // Direct match first
+    final direct = fd[canonicalKey];
+    if (direct != null && direct.toString().trim().isNotEmpty) {
+      return _formatValue(direct);
+    }
+    // Try variations
+    final variations = _variationsMap[canonicalKey] ?? [];
+    for (final fdKey in fd.keys) {
+      final clean = fdKey.toLowerCase().trim();
+      if (clean == canonicalKey || variations.any((v) => v.toLowerCase().trim() == clean)) {
+        final val = fd[fdKey];
+        if (val != null && val.toString().trim().isNotEmpty) {
+          return _formatValue(val);
+        }
+      }
+    }
+    return '';
+  }
+
+  String _formatValue(dynamic val) {
+    if (val is List) {
+      if (val.isEmpty) return '';
+      if (val.first is Map) {
+        return val.map((r) => '${r['full_name'] ?? ''} (${r['relationship'] ?? ''})').join(', ');
+      }
+      return val.join(', ');
+    }
+    return val.toString().trim();
+  }
+
+  void _checkProfileCompletion() {
+    if (_member == null) return;
+
+    final fd = _member!['form_details'] as Map<String, dynamic>? ?? {};
+    
+    // Build list of missing fields (matching website logic exactly)
+    final missingFields = <Map<String, dynamic>>[];
+    for (final field in _profileFields) {
+      final key = field['key'] as String;
+      final isOnMember = field['isFieldOnMember'] as bool;
+      
+      String value;
+      if (isOnMember) {
+        value = _member![key]?.toString().trim() ?? '';
+      } else {
+        value = _resolveFieldValue(fd, key);
+      }
+      
+      if (value.isEmpty) {
+        missingFields.add(field);
+      }
+    }
+
+    if (missingFields.isNotEmpty) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _showProfileCompletionDialog(missingFields);
+        }
+      });
+    }
+  }
+
+  void _showProfileCompletionDialog(List<Map<String, dynamic>> missingFields) {
+    // Create controllers for ONLY the missing fields
+    final controllers = <String, TextEditingController>{};
+    final genderOptions = ['Male', 'Female'];
+    final maritalOptions = ['Married', 'Single', 'Divorced', 'Widowed'];
+    String? selectedGender;
+    String? selectedMarital;
+
+    for (final field in missingFields) {
+      controllers[field['key'] as String] = TextEditingController();
+    }
+
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person_outline, color: AppColors.warning, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Complete Your Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 17))),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        border: Border.all(color: const Color(0xFFFEF3C7)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'You have ${missingFields.length} missing field${missingFields.length > 1 ? 's' : ''}. Please fill in below.',
+                        style: GoogleFonts.outfit(color: const Color(0xFF92400E), fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...missingFields.map((field) {
+                      final key = field['key'] as String;
+                      final label = field['label'] as String;
+
+                      // Gender dropdown
+                      if (key == 'gender') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedGender,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                            items: genderOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                            onChanged: (val) => setStateDialog(() => selectedGender = val),
+                          ),
+                        );
+                      }
+
+                      // Marital status dropdown
+                      if (key == 'marital_status') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedMarital,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                            items: maritalOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            onChanged: (val) => setStateDialog(() => selectedMarital = val),
+                          ),
+                        );
+                      }
+
+                      // Date of birth
+                      if (key == 'date_of_birth') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextField(
+                            controller: controllers[key],
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              hintText: 'Tap to select',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                            ),
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime(1990),
+                                firstDate: DateTime(1940),
+                                lastDate: DateTime.now(),
+                              );
+                              if (date != null) {
+                                controllers[key]!.text = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                              }
+                            },
+                          ),
+                        );
+                      }
+
+                      // Phone field
+                      if (key == 'phone') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextField(
+                            controller: controllers[key],
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              hintText: '07XX...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // ID number fields
+                      if (key.contains('id_number') || key.contains('national_id')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextField(
+                            controller: controllers[key],
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Default text field
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TextField(
+                          controller: controllers[key],
+                          decoration: InputDecoration(
+                            labelText: label,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Later', style: GoogleFonts.outfit(color: AppColors.textMuted)),
+                ),
+                if (isSaving)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: () async {
+                      setStateDialog(() => isSaving = true);
+                      try {
+                        final fd = Map<String, dynamic>.from(_member!['form_details'] as Map<String, dynamic>? ?? {});
+                        String? phone;
+
+                        for (final field in missingFields) {
+                          final key = field['key'] as String;
+                          String value = '';
+
+                          if (key == 'gender') {
+                            value = selectedGender ?? '';
+                          } else if (key == 'marital_status') {
+                            value = selectedMarital ?? '';
+                          } else {
+                            value = controllers[key]?.text.trim() ?? '';
+                          }
+
+                          if (key == 'phone') {
+                            phone = value;
+                          } else {
+                            fd[key] = value;
+                          }
+                        }
+
+                        final updateData = <String, dynamic>{'form_details': fd};
+                        if (phone != null && phone.isNotEmpty) {
+                          updateData['phone'] = phone;
+                        }
+
+                        await SupabaseService.updateMember(_member!['id'], updateData);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          _loadData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('✅ Profile updated!', style: GoogleFonts.outfit()),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          setStateDialog(() => isSaving = false);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Save Details', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Future<void> _downloadAsImage() async {
+    try {
+      final Uint8List? image = await _screenshotController.capture();
+      if (image != null) {
+        final directory = await getApplicationDocumentsDirectory();
+        final imagePath = await File('${directory.path}/virtual_card.png').create();
+        await imagePath.writeAsBytes(image);
+        await Share.shareXFiles([XFile(imagePath.path)], text: 'My Glamorous Care Virtual Card');
+      }
+    } catch (e) {
+      debugPrint('Error sharing card image: $e');
+    }
+  }
+
+  Future<void> _downloadAsPdf() async {
+    try {
+      final Uint8List? image = await _screenshotController.capture();
+      if (image != null) {
+        final pdf = pw.Document();
+        final pdfImage = pw.MemoryImage(image);
+        
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            build: (pw.Context context) {
+              return pw.Center(
+                child: pw.Image(pdfImage),
+              );
+            },
+          ),
+        );
+        
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/virtual_card.pdf');
+        await file.writeAsBytes(await pdf.save());
+        await Share.shareXFiles([XFile(file.path)], text: 'My Glamorous Care Virtual Card (PDF)');
+      }
+    } catch (e) {
+      debugPrint('Error sharing card pdf: $e');
+    }
+  }
+
+  void _showDownloadOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Download Card',
+                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.image, color: AppColors.primary),
+                  title: Text('Download as Image (PNG)', style: GoogleFonts.outfit(fontWeight: FontWeight.w500)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _downloadAsImage();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf, color: AppColors.red),
+                  title: Text('Download as Document (PDF)', style: GoogleFonts.outfit(fontWeight: FontWeight.w500)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _downloadAsPdf();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   double get _totalPaid {
@@ -62,16 +606,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
   }
 
+  // Registration fee is NOT withdrawable — separate from savings
+  double get _registrationFee {
+    return _payments
+        .where((p) {
+          final type = (p['payment_type'] ?? p['type'] ?? p['month'] ?? '').toString().toLowerCase();
+          return type.contains('registration') || type.contains('reg');
+        })
+        .where((p) => (p['status'] ?? '').toString().toLowerCase() == 'paid')
+        .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
+  }
+
+  // Total Savings = only monthly contributions (paid), excluding registration
   double get _totalSavings {
     return _payments
-        .where((p) => (p['payment_type'] ?? p['type'] ?? '').toString().toLowerCase().contains('saving'))
+        .where((p) {
+          final type = (p['payment_type'] ?? p['type'] ?? p['month'] ?? '').toString().toLowerCase();
+          return !type.contains('registration') && !type.contains('reg');
+        })
         .where((p) => (p['status'] ?? '').toString().toLowerCase() == 'paid')
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
   }
 
   String get _memberName => _member?['full_name'] ?? 'Member';
   String get _firstName => _memberName.split(' ').first;
-  String get _memberNumber => _member?['member_number']?.toString() ?? _member?['id']?.toString() ?? '00000000';
+  String get _memberNumber {
+    if (_member == null) return '0000 0000 0000 0000';
+    if (_member!['member_number'] != null && _member!['member_number'].toString().trim().isNotEmpty) {
+      return _member!['member_number'].toString();
+    }
+    
+    // Generate deterministic 16-digit account number from UUID
+    final String uuid = _member!['id'].toString().replaceAll('-', '');
+    String digits = '';
+    for (int i = 0; i < uuid.length; i++) {
+      digits += (uuid.codeUnitAt(i) % 10).toString();
+      if (digits.length >= 16) break;
+    }
+    if (digits.length < 16) digits = digits.padRight(16, '0');
+    return '${digits.substring(0,4)} ${digits.substring(4,8)} ${digits.substring(8,12)} ${digits.substring(12,16)}';
+  }
+  int get _cardTheme => (_member?['form_details'] as Map<String, dynamic>?)?['card_theme'] as int? ?? 0;
+  
   String get _memberSince {
     final joinDate = _member?['join_date'];
     if (joinDate == null) return 'N/A';
@@ -107,11 +683,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         Navigator.pushNamed(context, PaymentHistoryScreen.route).then((_) {
           setState(() => _currentIndex = 0);
+          _loadData();
         });
         break;
       case 2:
         Navigator.pushNamed(context, SettingsScreen.route).then((_) {
           setState(() => _currentIndex = 0);
+          _loadData();
         });
         break;
     }
@@ -123,335 +701,454 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppColors.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: _loadData,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                slivers: [
-                  // --- Custom App Bar ---
-                  SliverToBoxAdapter(
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.primary, AppColors.purple],
+          : Stack(
+              children: [
+                RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: _loadData,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    slivers: [
+                      // --- Custom App Bar ---
+                      SliverToBoxAdapter(
+                        child: SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [AppColors.primary, AppColors.purple],
+                                    ),
+                                    shape: BoxShape.circle, // Circular logo
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _initials,
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(16),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Hello, $_firstName \u{1F44B}',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Welcome back to your dashboard',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(context, NotificationsScreen.route).then((_) => _loadData());
+                                  },
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(14),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
+                                      ),
+                                      if (_unreadNotifications > 0)
+                                        Positioned(
+                                          right: -4,
+                                          top: -4,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Text(
+                                              _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                                              style: GoogleFonts.outfit(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // --- Offline Mode Banner ---
+                      if (_isOffline)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF3CD),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.wifi_off_rounded, color: Color(0xFFB8860B), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Free Mode — You\'re viewing cached data. Connect to the internet to sync.',
+                                    style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF856404)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // --- Virtual Card ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          // Increased horizontal padding from 20 to 32 to reduce card width slightly
+                          padding: const EdgeInsets.fromLTRB(32, 28, 32, 0),
+                          child: Column(
+                            children: [
+                              Screenshot(
+                                controller: _screenshotController,
+                                child: VirtualCard(
+                                  memberName: _memberName,
+                                  memberNumber: _memberNumber,
+                                  memberSince: _memberSince,
+                                  totalPaid: _totalPaid,
+                                  outstanding: _totalPending,
+                                  balancesVisible: _balancesVisible,
+                                  themeIndex: _cardTheme,
+                                  onToggleBalances: () {
+                                    setState(() => _balancesVisible = !_balancesVisible);
+                                  },
+                                ),
                               ),
-                              child: Center(
-                                child: Text(
-                                  _initials,
+                              const SizedBox(height: 16),
+                              TextButton.icon(
+                                onPressed: _showDownloadOptions,
+                                icon: const Icon(Icons.download_rounded, color: AppColors.primary, size: 18),
+                                label: Text(
+                                  'Save / Share Card',
                                   style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                style: TextButton.styleFrom(
+                                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Hello, $_firstName \u{1F44B}',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Welcome back to your dashboard',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
-                                onPressed: () {},
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
 
-                  // --- Virtual Card ---
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                      child: VirtualCard(
-                        memberName: _memberName,
-                        memberNumber: _memberNumber,
-                        memberSince: _memberSince,
-                        totalPaid: _totalPaid,
-                        outstanding: _totalPending,
-                        balancesVisible: _balancesVisible,
-                        onToggleBalances: () {
-                          setState(() => _balancesVisible = !_balancesVisible);
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // --- Summary Stats ---
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                      child: Text(
-                        'Overview',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Total Paid',
-                              amount: _balancesVisible ? 'KES ${_totalPaid.toStringAsFixed(0)}' : '****',
-                              icon: Icons.check_circle_rounded,
-                              color: AppColors.success,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Pending',
-                              amount: _balancesVisible ? 'KES ${_totalPending.toStringAsFixed(0)}' : '****',
-                              icon: Icons.pending_actions_rounded,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: SummaryCard(
-                        title: 'Total Savings',
-                        amount: _balancesVisible ? 'KES ${_totalSavings.toStringAsFixed(0)}' : '****',
-                        icon: Icons.savings_rounded,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-
-                  // --- Recent Payments ---
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recent Payments',
+                      // --- Summary Stats ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                          child: Text(
+                            'Overview',
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => Navigator.pushNamed(context, PaymentHistoryScreen.route),
-                            child: Text(
-                              'See All',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-
-                  if (_recentPayments.isEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                        child: Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFF3F4F6)),
-                          ),
-                          child: Column(
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: Row(
                             children: [
-                              Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.textMuted),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No payments yet',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
+                              Expanded(
+                                child: SummaryCard(
+                                  title: 'Total Paid',
+                                  amount: _balancesVisible ? 'KES ${_totalPaid.toStringAsFixed(0)}' : '****',
+                                  icon: Icons.check_circle_rounded,
+                                  color: AppColors.success,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Your payment history will appear here',
-                                style: GoogleFonts.outfit(fontSize: 13, color: AppColors.textMuted),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: SummaryCard(
+                                  title: 'Pending',
+                                  amount: _balancesVisible ? 'KES ${_totalPending.toStringAsFixed(0)}' : '****',
+                                  icon: Icons.pending_actions_rounded,
+                                  color: AppColors.warning,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    )
-                  else
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final p = _recentPayments[index];
-                          final status = (p['status'] ?? 'pending').toString().toLowerCase();
-                          final amount = num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0;
-                          final month = p['month'] ?? '-';
-                          final date = p['payment_date'] ?? '';
-                          final type = p['payment_type'] ?? p['type'] ?? 'Payment';
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: SummaryCard(
+                                  title: 'Savings',
+                                  amount: _balancesVisible ? 'KES ${_totalSavings.toStringAsFixed(0)}' : '****',
+                                  icon: Icons.savings_rounded,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: SummaryCard(
+                                  title: 'Reg. Fee',
+                                  amount: _balancesVisible ? 'KES ${_registrationFee.toStringAsFixed(0)}' : '****',
+                                  icon: Icons.app_registration_rounded,
+                                  color: AppColors.purple,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
-                          Color statusColor;
-                          IconData statusIcon;
-                          if (status == 'paid') {
-                            statusColor = AppColors.success;
-                            statusIcon = Icons.check_circle_rounded;
-                          } else if (status == 'late') {
-                            statusColor = AppColors.error;
-                            statusIcon = Icons.warning_rounded;
-                          } else {
-                            statusColor = AppColors.warning;
-                            statusIcon = Icons.schedule_rounded;
-                          }
+                      // --- Recent Payments ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Recent Payments',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => Navigator.pushNamed(context, PaymentHistoryScreen.route),
+                                child: Text(
+                                  'See All',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
-                          String formattedDate = '-';
-                          try {
-                            final dt = DateTime.parse(date.toString());
-                            formattedDate = '${dt.day}/${dt.month}/${dt.year}';
-                          } catch (_) {}
-
-                          return Padding(
-                            padding: EdgeInsets.fromLTRB(20, 0, 20, index == _recentPayments.length - 1 ? 100 : 10),
+                      if (_recentPayments.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                             child: Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: const Color(0xFFF3F4F6)),
                               ),
-                              child: Row(
+                              child: Column(
                                 children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Icon(statusIcon, color: statusColor, size: 22),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          month.toString(),
-                                          style: GoogleFonts.outfit(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          '$type \u2022 $formattedDate',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 12,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
+                                  Icon(Icons.receipt_long_rounded, size: 48, color: AppColors.textMuted),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No payments yet',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        'KES ${amount.toStringAsFixed(0)}',
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: statusColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          status.toUpperCase(),
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: statusColor,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Your payment history will appear here',
+                                    style: GoogleFonts.outfit(fontSize: 13, color: AppColors.textMuted),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                        childCount: _recentPayments.length,
-                      ),
-                    ),
-                ],
-              ),
+                          ),
+                        )
+                      else
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final p = _recentPayments[index];
+                              final status = (p['status'] ?? 'pending').toString().toLowerCase();
+                              final amount = num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0;
+                              final month = p['month'] ?? '-';
+                              final date = p['payment_date'] ?? '';
+                              final type = p['payment_type'] ?? p['type'] ?? 'Payment';
+
+                              Color statusColor;
+                              IconData statusIcon;
+                              if (status == 'paid') {
+                                statusColor = AppColors.success;
+                                statusIcon = Icons.check_circle_rounded;
+                              } else if (status == 'late') {
+                                statusColor = AppColors.error;
+                                statusIcon = Icons.warning_rounded;
+                              } else {
+                                statusColor = AppColors.warning;
+                                statusIcon = Icons.schedule_rounded;
+                              }
+
+                              String formattedDate = '-';
+                              try {
+                                final dt = DateTime.parse(date.toString());
+                                formattedDate = '${dt.day}/${dt.month}/${dt.year}';
+                              } catch (_) {}
+
+                              return Padding(
+                                padding: EdgeInsets.fromLTRB(20, 0, 20, index == _recentPayments.length - 1 ? 100 : 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Icon(statusIcon, color: statusColor, size: 22),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              month.toString(),
+                                              style: GoogleFonts.outfit(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              '$type \u2022 $formattedDate',
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 12,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'KES ${amount.toStringAsFixed(0)}',
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              status.toUpperCase(),
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: statusColor,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: _recentPayments.length,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.center, // Explode from center looks cooler
+                  child: ConfettiWidget(
+                    confettiController: _confettiController,
+                    blastDirectionality: BlastDirectionality.explosive,
+                    shouldLoop: false,
+                    emissionFrequency: 0.05,
+                    numberOfParticles: 50,
+                    gravity: 0.2,
+                    colors: const [
+                      AppColors.primary,
+                      AppColors.purple,
+                      AppColors.red,
+                      Colors.amber,
+                      Colors.green,
+                      Colors.blue,
+                      Colors.pink,
+                    ],
+                  ),
+                ),
+              ],
             ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

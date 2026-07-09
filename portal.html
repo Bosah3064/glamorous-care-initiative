@@ -306,6 +306,43 @@
                         <p style="margin: 5px 0 0; opacity: 0.85; font-size: 0.9rem;">Manage members and payment records</p>
                     </div>
 
+                    <!-- Send Notification (Admin) -->
+                    <div class="admin-card">
+                        <h3><i class="fa-solid fa-bell"></i> Send Notification</h3>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Send an in-app push notification to a specific member or all members.</p>
+                        <div class="admin-msg" id="notificationMsg"></div>
+                        <form id="notificationForm" class="admin-form" onsubmit="sendAdminNotification(event)">
+                            <div class="form-row" style="grid-template-columns: 1fr;">
+                                <div class="form-group">
+                                    <label>Recipient</label>
+                                    <select id="notifRecipient" required>
+                                        <option value="all">All Members (Broadcast)</option>
+                                        <!-- Members injected via JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Title</label>
+                                    <input type="text" id="notifTitle" required placeholder="e.g. System Update">
+                                </div>
+                                <div class="form-group">
+                                    <label>Type</label>
+                                    <select id="notifType" required>
+                                        <option value="info">Info / Announcement</option>
+                                        <option value="payment">Payment Issue</option>
+                                        <option value="system">System Alert</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="notifMessage" rows="3" required placeholder="Type your message here..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 15px;"><i class="fa-solid fa-paper-plane"></i> Send Notification</button>
+                        </form>
+                    </div>
+
                     <!-- Bulk Import Members -->
                     <div class="admin-card" style="border: 2px dashed var(--color-blue); background: #f8fafc;">
                         <h3><i class="fa-solid fa-file-excel"></i> Bulk Import from Google Forms</h3>

@@ -100,15 +100,15 @@ class WelcomeScreen extends StatelessWidget {
 
                   // ── Tagline ──
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'Manage members, payments, and savings\n— all in one place.',
+                      'A community-driven organization dedicated to empowering our members through structured savings, welfare, healthcare, and educational support.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: Colors.white.withOpacity(0.75),
-                        height: 1.55,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.5,
                       ),
                     ),
                   ),
@@ -121,7 +121,7 @@ class WelcomeScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, LoginScreen.route);
+                        Navigator.pushNamed(context, '/register');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.15),

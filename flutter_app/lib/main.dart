@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app_colors.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/payment_history_screen.dart';
 import 'screens/admin_panel_screen.dart';
@@ -10,39 +11,42 @@ import 'screens/manage_members_screen.dart';
 import 'screens/manage_payments_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reset_password_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'services/supabase_service.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env file in assets
   try {
-    await dotenv.load();
+    await dotenv.load(fileName: 'assets/.env');
   } catch (e) {
-    // Ignore, relying on dart-define or defaults
+    debugPrint('dotenv load error: $e');
   }
-  final supabaseUrlFromEnv = dotenv.env['SUPABASE_URL'] ?? '';
-  final supabaseAnonKeyFromEnv = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
-  final supabaseUrl =
-      const String.fromEnvironment('SUPABASE_URL', defaultValue: '').isNotEmpty
-          ? const String.fromEnvironment('SUPABASE_URL')
-          : supabaseUrlFromEnv;
+  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
-  final supabaseAnonKey =
-      const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '')
-              .isNotEmpty
-          ? const String.fromEnvironment('SUPABASE_ANON_KEY')
-          : supabaseAnonKeyFromEnv;
-
+  String initRoute = WelcomeScreen.route;
   if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
-    await SupabaseService.init(url: supabaseUrl, anonKey: supabaseAnonKey);
+    try {
+      await SupabaseService.init(url: supabaseUrl, anonKey: supabaseAnonKey);
+      final valid = await SupabaseService.isSessionValid();
+      if (valid) {
+        initRoute = DashboardScreen.route;
+      }
+    } catch (e) {
+      debugPrint('Supabase init error: $e');
+    }
   }
-  runApp(const GlamorousCareApp());
+  runApp(GlamorousCareApp(initialRoute: initRoute));
 }
 
 class GlamorousCareApp extends StatelessWidget {
-  const GlamorousCareApp({super.key});
+  final String initialRoute;
+  const GlamorousCareApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -123,10 +127,11 @@ class GlamorousCareApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: WelcomeScreen.route,
+      initialRoute: initialRoute,
       routes: {
         WelcomeScreen.route: (_) => const WelcomeScreen(),
         LoginScreen.route: (_) => const LoginScreen(),
+        RegisterScreen.route: (_) => const RegisterScreen(),
         ResetPasswordScreen.route: (_) => const ResetPasswordScreen(),
         DashboardScreen.route: (_) => const DashboardScreen(),
         PaymentHistoryScreen.route: (_) => const PaymentHistoryScreen(),
@@ -134,6 +139,7 @@ class GlamorousCareApp extends StatelessWidget {
         ManageMembersScreen.route: (_) => const ManageMembersScreen(),
         ManagePaymentsScreen.route: (_) => const ManagePaymentsScreen(),
         SettingsScreen.route: (_) => const SettingsScreen(),
+        NotificationsScreen.route: (_) => const NotificationsScreen(),
       },
     );
   }

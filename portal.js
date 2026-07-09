@@ -662,8 +662,16 @@ function renderMemberVirtualCard(arg1, arg2) {
     
     const brandGradient = getBrandCardGradient();
     
-    // Fallback if no template is selected
-    const color = bgStyle || (selectedCardColor === 'brand' ? brandGradient : selectedCardColor) || colorForMember(member.id || member.email || member.full_name);
+    let color = bgStyle || (selectedCardColor === 'brand' ? brandGradient : selectedCardColor) || colorForMember(member.id || member.email || member.full_name);
+
+    // Apply cross-platform theme if set in DB
+    if (member.form_details && member.form_details.card_theme !== undefined) {
+        const themeIndex = member.form_details.card_theme;
+        if (themeIndex === 0) color = 'linear-gradient(135deg, #1d5f99, #683669, #a5243d)';
+        if (themeIndex === 1) color = 'linear-gradient(135deg, #0891b2, #1e40af, #3730a3)';
+        if (themeIndex === 2) color = 'linear-gradient(135deg, #e11d48, #f97316, #eab308)';
+        if (themeIndex === 3) color = 'linear-gradient(135deg, #059669, #0d9488, #06b6d4)';
+    }
 
     cardEl.classList.add('virtual-card');
     if (color && color.includes('gradient')) {
@@ -1095,6 +1103,14 @@ function populateMemberDropdown(members) {
         selectView.innerHTML = '<option value="">— Select a member —</option>';
         members.forEach(m => {
             selectView.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
+        });
+    }
+
+    const notifSelect = document.getElementById('notifRecipient');
+    if (notifSelect) {
+        notifSelect.innerHTML = '<option value="all">All Members (Broadcast)</option>';
+        members.forEach(m => {
+            notifSelect.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
         });
     }
 
@@ -1798,8 +1814,8 @@ if (nativeRegForm) {
             dependant_count: document.getElementById('regDependantCount').value
         };
 
-        // 3. Insert into members table
-        const { error: dbError } = await client.from('members').insert({
+        // 3. Insert into members table (upsert so it won't clash with the trigger)
+        const { error: dbError } = await client.from('members').upsert({
             id: userId,
             full_name: fullName,
             email: email,
@@ -1808,7 +1824,7 @@ if (nativeRegForm) {
             status: 'active',
             requires_password_reset: false,
             form_details: formDetails
-        });
+        }, { onConflict: 'id' });
 
         if (dbError) {
             errDiv.textContent = "Account created but failed to save details: " + dbError.message;
@@ -3199,3 +3215,56 @@ if (registrationForm) {
         msgDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 }
+
+// Send Admin Notification
+window.sendAdminNotification = async function(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const msg = document.getElementById('notificationMsg');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    
+    const recipient = document.getElementById('notifRecipient').value;
+    const title = document.getElementById('notifTitle').value.trim();
+    const type = document.getElementById('notifType').value;
+    const message = document.getElementById('notifMessage').value.trim();
+    
+    try {
+        let targets = [];
+        if (recipient === 'all') {
+            if (!window.allMembers) throw new Error("Members not loaded yet");
+            targets = window.allMembers.map(m => m.id);
+        } else {
+            targets = [recipient];
+        }
+        
+        if (targets.length === 0) throw new Error("No recipients found.");
+        
+        const payload = targets.map(memberId => ({
+            member_id: memberId,
+            title: title,
+            message: message,
+            type: type,
+            metadata: { source: 'admin_panel' }
+        }));
+        
+        const { error } = await client.from('notifications').insert(payload);
+        if (error) throw error;
+        
+        msg.className = 'admin-msg success';
+        msg.style.display = 'block';
+        msg.textContent = `Notification successfully sent to ${targets.length} member(s)!`;
+        
+        e.target.reset();
+        
+    } catch (err) {
+        msg.className = 'admin-msg error';
+        msg.style.display = 'block';
+        msg.textContent = 'Error: ' + err.message;
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Notification';
+    setTimeout(() => { if (msg) msg.style.display = 'none'; }, 5000);
+};

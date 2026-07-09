@@ -9,6 +9,7 @@ class VirtualCard extends StatelessWidget {
   final double outstanding;
   final bool balancesVisible;
   final VoidCallback onToggleBalances;
+  final int themeIndex;
 
   const VirtualCard({
     super.key,
@@ -19,7 +20,22 @@ class VirtualCard extends StatelessWidget {
     required this.outstanding,
     required this.balancesVisible,
     required this.onToggleBalances,
+    this.themeIndex = 0,
   });
+
+  /// The 4 gradient themes for the card background.
+  static const List<List<Color>> _themes = [
+    // Theme 0 – Default Glamour: Navy → Purple → Crimson
+    [Color(0xFF1d5f99), Color(0xFF683669), Color(0xFFa5243d)],
+    // Theme 1 – Ocean Teal: Cyan → Blue → Indigo
+    [Color(0xFF0891b2), Color(0xFF1e40af), Color(0xFF3730a3)],
+    // Theme 2 – Sunset Orange: Rose → Orange → Yellow
+    [Color(0xFFe11d48), Color(0xFFf97316), Color(0xFFeab308)],
+    // Theme 3 – Emerald Green: Emerald → Teal → Cyan
+    [Color(0xFF059669), Color(0xFF0d9488), Color(0xFF06b6d4)],
+  ];
+
+  List<Color> get _colors => _themes[themeIndex.clamp(0, _themes.length - 1)];
 
   String get _formattedNumber {
     final cleaned = memberNumber.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
@@ -31,24 +47,26 @@ class VirtualCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _colors;
+
     return AspectRatio(
       aspectRatio: 85.6 / 54,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1d5f99), Color(0xFF683669), Color(0xFFa5243d)],
+          gradient: LinearGradient(
+            colors: colors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1d5f99).withOpacity(0.35),
+              color: colors[0].withOpacity(0.35),
               blurRadius: 30,
               offset: const Offset(0, 15),
             ),
             BoxShadow(
-              color: const Color(0xFF683669).withOpacity(0.2),
+              color: colors[1].withOpacity(0.2),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -96,32 +114,50 @@ class VirtualCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       // Brand
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            'MEMBERSHIP',
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withOpacity(0.6),
-                              fontSize: 8,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'GLAMOROUS CARE',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.5,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 4,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'MEMBERSHIP',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 2,
                                 ),
-                              ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'GLAMOROUS CARE',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.5,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                             ),
                           ),
                         ],
