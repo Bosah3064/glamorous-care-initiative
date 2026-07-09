@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app_colors.dart';
+
 import '../services/supabase_service.dart';
 
 class ManageMembersScreen extends StatefulWidget {

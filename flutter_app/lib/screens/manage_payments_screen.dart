@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app_colors.dart';
+
 import '../services/supabase_service.dart';
 
 class ManagePaymentsScreen extends StatefulWidget {
@@ -12,7 +12,7 @@ class ManagePaymentsScreen extends StatefulWidget {
 
 class _ManagePaymentsScreenState extends State<ManagePaymentsScreen> {
   Future<void> _toggleStatus(Map<String, dynamic> payment) async {
-    final id = payment['id'] as int?;
+    final id = payment['id']?.toString();
     if (id == null) return;
     final current = payment['status'] as String? ?? 'Pending';
     final next = current.toLowerCase() == 'paid' ? 'Pending' : 'Paid';
