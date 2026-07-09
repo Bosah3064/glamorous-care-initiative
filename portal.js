@@ -724,12 +724,17 @@ function renderMemberVirtualCard(arg1, arg2) {
         <!-- BALANCE BAR -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.12);">
             <div>
-                <div class="card-balance">Total Paid</div>
-                <div class="card-balance-amount">KES ${paidTotal.toLocaleString()}</div>
+                <div class="card-balance">
+                    Total Paid
+                    <i class="fa-solid fa-eye${window._cardBalancesVisible ? '' : '-slash'}" id="toggleCardBalances" style="cursor:pointer; margin-left:6px; opacity:0.8;" title="Toggle visibility"></i>
+                </div>
+                <div class="card-balance-amount">KES ${window._cardBalancesVisible ? paidTotal.toLocaleString() : '****'}</div>
             </div>
             <div style="text-align:right;">
                 <div class="card-balance">Outstanding</div>
-                <div class="card-balance-amount" style="color: ${outstanding > 0 ? 'rgba(255,200,200,0.95)' : 'rgba(200,255,200,0.95)'};">KES ${outstanding.toLocaleString()}</div>
+                <div class="card-balance-amount" style="color: ${window._cardBalancesVisible ? (outstanding > 0 ? 'rgba(255,200,200,0.95)' : 'rgba(200,255,200,0.95)') : 'inherit'};">
+                    KES ${window._cardBalancesVisible ? outstanding.toLocaleString() : '****'}
+                </div>
             </div>
         </div>
     `;
@@ -737,6 +742,15 @@ function renderMemberVirtualCard(arg1, arg2) {
     // attach download handlers
     const pngBtn = document.getElementById('downloadCardPngBtn');
     const pdfBtn = document.getElementById('downloadCardPdfBtn');
+    const toggleBtn = document.getElementById('toggleCardBalances');
+    
+    if (toggleBtn) {
+        toggleBtn.onclick = (e) => {
+            e.stopPropagation();
+            window._cardBalancesVisible = !window._cardBalancesVisible;
+            renderMemberVirtualCard(window.currentMember || { full_name: 'Member' }, payments);
+        };
+    }
 
     if (pngBtn) {
         pngBtn.onclick = async () => {
@@ -857,8 +871,14 @@ function setupCardPalette() {
     paletteEl.appendChild(brandSw);
     brandSw.onclick = () => {
         selectedCardColor = 'brand';
+        selectedCardTemplateId = null;
         Array.from(paletteEl.children).forEach(ch => ch.classList.remove('selected'));
         brandSw.classList.add('selected');
+        
+        // Also clear template selection visually
+        const tplContainer = document.getElementById('cardTemplatesContainer');
+        if (tplContainer) Array.from(tplContainer.children).forEach(ch => ch.classList.remove('selected'));
+        
         renderMemberVirtualCard(window.currentMember || { full_name: 'Member' }, window._lastMemberPayments || []);
     };
     palette.forEach(c => {
@@ -869,9 +889,15 @@ function setupCardPalette() {
         sw.dataset.color = c;
         sw.onclick = () => {
             selectedCardColor = c;
+            selectedCardTemplateId = null;
             // mark selected
             Array.from(paletteEl.children).forEach(ch => ch.classList.remove('selected'));
             sw.classList.add('selected');
+            
+            // Also clear template selection visually
+            const tplContainer = document.getElementById('cardTemplatesContainer');
+            if (tplContainer) Array.from(tplContainer.children).forEach(ch => ch.classList.remove('selected'));
+            
             // re-render card with new color
             renderMemberVirtualCard(window.currentMember || { full_name: 'Member' }, window._lastMemberPayments || []);
             // optionally apply to header
@@ -933,6 +959,32 @@ function renderMemberPaymentsAnalytics(member, payments) {
 
     // render virtual card
     renderMemberVirtualCard(payments);
+
+    // render payment history table
+    const historyTbody = document.getElementById('memberPaymentsList');
+    if (historyTbody) {
+        if (!payments || payments.length === 0) {
+            historyTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#6b7280;padding:20px;">No payment history found.</td></tr>';
+        } else {
+            // Sort payments by date descending
+            const sortedPayments = [...payments].sort((a,b) => new Date(b.payment_date) - new Date(a.payment_date));
+            historyTbody.innerHTML = sortedPayments.map(p => {
+                let badgeClass = 'status-badge status-probation';
+                if (p.status === 'paid') badgeClass = 'status-badge status-approved';
+                else if (p.status === 'late') badgeClass = 'status-badge status-declined';
+                
+                return `
+                    <tr>
+                        <td><strong>${p.month || '-'}</strong></td>
+                        <td>KES ${(Number(p.amount) || 0).toLocaleString()}</td>
+                        <td>${p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</td>
+                        <td><span class="${badgeClass}">${(p.status || 'Pending').toUpperCase()}</span></td>
+                        <td><span style="font-family:monospace;font-size:0.85rem;color:#6b7280;">${p.reference || p.id.split('-')[0]}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
 }
 
 // Render Members Directory (Only show when filtered)
