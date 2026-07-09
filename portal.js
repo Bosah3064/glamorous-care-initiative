@@ -651,21 +651,28 @@ function renderMemberVirtualCard(arg1, arg2) {
     const paidTotal = (payments || []).reduce((s,p) => s + (Number(p.amount) || 0), 0);
     // Determine background: use selected template if any, otherwise mix selected color with generated color
     let bgStyle = null;
+    
+    // If a template is explicitly selected, always use its complete background definition
     if (selectedCardTemplateId) {
         const tpl = CARD_TEMPLATES.find(t => t.id === selectedCardTemplateId);
         if (tpl) {
-            if (selectedCardColor) {
-                bgStyle = `linear-gradient(135deg, ${tpl.bg}, ${selectedCardColor})`;
-            } else {
-                bgStyle = tpl.bg;
-            }
+            bgStyle = tpl.bg;
         }
     }
+    
     const brandGradient = getBrandCardGradient();
+    
+    // Fallback if no template is selected
     const color = bgStyle || (selectedCardColor === 'brand' ? brandGradient : selectedCardColor) || colorForMember(member.id || member.email || member.full_name);
 
     cardEl.classList.add('virtual-card');
-    cardEl.style.background = color;
+    if (color && color.includes('gradient')) {
+        cardEl.style.backgroundImage = color;
+        cardEl.style.backgroundColor = 'transparent';
+    } else {
+        cardEl.style.backgroundColor = color || 'transparent';
+        cardEl.style.backgroundImage = 'none';
+    }
     const cardNumber = (member.member_number || member.id || '000000000000').toString();
     // Format as 4-digit groups for realism
     const last8 = cardNumber.replace(/[^a-zA-Z0-9]/g, '').slice(-8).padStart(8, '0');
