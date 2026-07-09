@@ -16,8 +16,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Load .env (local) and prefer dart-define when provided.
-  await dotenv.load();
+  try {
+    await dotenv.load();
+  } catch (e) {
+    // Ignore, relying on dart-define or defaults
+  }
   final supabaseUrlFromEnv = dotenv.env['SUPABASE_URL'] ?? '';
   final supabaseAnonKeyFromEnv = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
