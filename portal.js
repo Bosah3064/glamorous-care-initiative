@@ -1657,6 +1657,7 @@ function openModal(id, options = { fullscreen: true, scrollToTop: true }) {
 function closeModal(id) {
     const el = document.getElementById(id);
     if (!el) return;
+    el.removeAttribute('style'); // Clear any forced inline styles
     el.style.display = 'none';
     el.classList.remove('fullscreen');
     // Restore body scrolling
@@ -1991,11 +1992,21 @@ window.openAdminResetPasswordModal = function() {
     document.getElementById('adminResetNewPassword').value = '';
     document.getElementById('adminResetPasswordMsg').style.display = 'none';
     
-    // Close edit modal first
+    // Close edit modal
     closeModal('editMemberModal');
     
-    // Open reset modal natively, but turn OFF fullscreen so it's a popup
-    openModal('adminResetPasswordModal', { fullscreen: false, scrollToTop: false });
+    // Foolproof inline styling to force visibility
+    const resetModal = document.getElementById('adminResetPasswordModal');
+    if (resetModal) {
+        resetModal.setAttribute('style', 'display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.8) !important; z-index: 9999999 !important; justify-content: center !important; align-items: center !important;');
+        resetModal.classList.remove('fullscreen');
+        
+        const content = resetModal.querySelector('.modal-content');
+        if (content) {
+            content.setAttribute('style', 'background: white !important; padding: 30px !important; border-radius: 15px !important; width: 90% !important; max-width: 400px !important; position: relative !important; z-index: 10000000 !important; box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;');
+        }
+        document.body.style.overflow = 'hidden';
+    }
 };
 
 const adminResetPasswordForm = document.getElementById('adminResetPasswordForm');
