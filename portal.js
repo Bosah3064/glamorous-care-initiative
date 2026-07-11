@@ -1645,9 +1645,8 @@ function openModal(id, options = { fullscreen: true, scrollToTop: true }) {
         try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0,0); }
         try { document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch(e) { }
     }
-    // Ensure the overlay is visible in the viewport and the modal content starts at top
+    // Ensure the modal content scroll position starts at top
     try {
-        el.scrollIntoView({ behavior: 'auto', block: 'start' });
         const mc = el.querySelector('.modal-content');
         if (mc) mc.scrollTop = 0;
     } catch (e) { }
