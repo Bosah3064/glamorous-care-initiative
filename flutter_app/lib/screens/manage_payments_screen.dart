@@ -727,6 +727,7 @@ class _ManagePaymentsScreenState extends State<ManagePaymentsScreen>
               GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 13),
           tabs: const [
             Tab(icon: Icon(Icons.list_alt_rounded, size: 20), text: 'Payments'),
+            Tab(icon: Icon(Icons.bar_chart_rounded, size: 20), text: 'Summary'),
             Tab(
                 icon: Icon(Icons.person_search_rounded, size: 20),
                 text: 'Member History'),
@@ -743,6 +744,7 @@ class _ManagePaymentsScreenState extends State<ManagePaymentsScreen>
               controller: _tabController,
               children: [
                 _buildPaymentsTab(),
+                _buildSummaryTab(),
                 _buildMemberHistoryTab(),
                 _buildBulkActionsTab(),
               ],
