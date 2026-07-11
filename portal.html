@@ -306,6 +306,28 @@
                         <p style="margin: 5px 0 0; opacity: 0.85; font-size: 0.9rem;">Manage members and payment records</p>
                     </div>
 
+                    <!-- Password Reset Section (Admin) -->
+                    <div class="admin-card" style="border-left: 4px solid #f59e0b;">
+                        <h3 style="color: #d97706;"><i class="fa-solid fa-lock-reset"></i> Force Password Reset</h3>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Reset a password for any member who cannot log in. They can change it later.</p>
+                        <div class="auth-error" id="inlineResetPasswordMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <form id="inlineResetPasswordForm" class="admin-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Select Member</label>
+                                    <select id="inlineResetTargetId" required>
+                                        <option value="">-- Loading members... --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>New Password</label>
+                                    <input type="text" id="inlineResetNewPassword" required minlength="6" placeholder="e.g. 12345678">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="background: #d97706; border: none; margin-top: 5px;"><i class="fa-solid fa-key"></i> Reset Password Now</button>
+                        </form>
+                    </div>
+
                     <!-- Send Notification (Admin) -->
                     <div class="admin-card">
                         <h3><i class="fa-solid fa-bell"></i> Send Notification</h3>
@@ -679,29 +701,7 @@
                             
                             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                                 <button type="button" class="btn btn-secondary" onclick="closeModal('editMemberModal')">Cancel</button>
-                                <button type="button" class="btn btn-secondary" onclick="openAdminResetPasswordModal()" style="background: #f59e0b; color: white; border: none; display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-lock-reset"></i> Reset Password</button>
                                 <button type="submit" class="btn btn-primary" style="display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-save"></i> Save Changes</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- ADMIN RESET PASSWORD MODAL -->
-                <div id="adminResetPasswordModal" class="modal-overlay">
-                    <div class="modal-content" style="max-width: 400px;">
-                        <button onclick="closeModal('adminResetPasswordModal')" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
-                        <h3 style="margin-top: 0; color: #d97706; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-lock-reset"></i> Reset Password</h3>
-                        <div class="auth-error" id="adminResetPasswordMsg" style="display:none; margin-bottom: 15px;"></div>
-                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Enter a new password for <strong id="adminResetTargetName">this user</strong>.</p>
-                        <form id="adminResetPasswordForm" class="admin-form">
-                            <input type="hidden" id="adminResetTargetId">
-                            <div class="form-group">
-                                <label>New Password</label>
-                                <input type="text" id="adminResetNewPassword" required minlength="6" placeholder="Enter new password (min 6 chars)">
-                            </div>
-                            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                                <button type="button" class="btn btn-secondary" onclick="closeModal('adminResetPasswordModal')">Cancel</button>
-                                <button type="submit" class="btn btn-primary" style="background: #d97706; border: none;">Reset Password</button>
                             </div>
                         </form>
                     </div>
@@ -839,6 +839,6 @@
     <script src="bulk-payment-utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="portal.js?v=4.9"></script>
+    <script src="portal.js?v=4.10"></script>
 </body>
 </html>

@@ -1134,17 +1134,24 @@ function populateMemberDropdown(members) {
     }
     
     if (selectView) {
-        selectView.innerHTML = '<option value="">— Select a member —</option>';
+        selectView.innerHTML = '<option value="">- Select a member -</option>';
         members.forEach(m => {
             selectView.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
         });
     }
-
-    const notifSelect = document.getElementById('notifRecipient');
-    if (notifSelect) {
-        notifSelect.innerHTML = '<option value="all">All Members (Broadcast)</option>';
+    
+    if (notifRecipient) {
+        let options = '<option value="all">All Members (Broadcast)</option>';
         members.forEach(m => {
-            notifSelect.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
+            options += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
+        });
+        notifRecipient.innerHTML = options;
+    }
+
+    if (inlineResetTarget) {
+        inlineResetTarget.innerHTML = '<option value="">- Select a member -</option>';
+        members.forEach(m => {
+            inlineResetTarget.innerHTML += `<option value="${m.id}">${m.full_name} (${m.email})</option>`;
         });
     }
 
@@ -1979,67 +1986,51 @@ if (editMemberForm) {
     });
 }
 
-// ADMIN RESET PASSWORD
-window.openAdminResetPasswordModal = function() {
-    const targetId = document.getElementById('editMemberId').value;
-    const targetName = document.getElementById('editMemberName').value;
-    
-    if (!targetId) return;
-    
-    document.getElementById('adminResetTargetId').value = targetId;
-    document.getElementById('adminResetTargetName').textContent = targetName || 'this user';
-    document.getElementById('adminResetNewPassword').value = '';
-    document.getElementById('adminResetPasswordMsg').style.display = 'none';
-    
-    // Close edit modal
-    closeModal('editMemberModal');
-    
-    // Foolproof inline styling to force visibility
-    const resetModal = document.getElementById('adminResetPasswordModal');
-    if (resetModal) {
-        resetModal.setAttribute('style', 'display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.8) !important; z-index: 9999999 !important; justify-content: center !important; align-items: center !important;');
-        resetModal.classList.remove('fullscreen');
-        
-        const content = resetModal.querySelector('.modal-content');
-        if (content) {
-            content.setAttribute('style', 'background: white !important; padding: 30px !important; border-radius: 15px !important; width: 90% !important; max-width: 400px !important; position: relative !important; z-index: 10000000 !important; box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;');
-        }
-        document.body.style.overflow = 'hidden';
-    }
-};
-
-const adminResetPasswordForm = document.getElementById('adminResetPasswordForm');
-if (adminResetPasswordForm) {
-    adminResetPasswordForm.addEventListener('submit', async (e) => {
+const inlineResetPasswordForm = document.getElementById('inlineResetPasswordForm');
+if (inlineResetPasswordForm) {
+    inlineResetPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = adminResetPasswordForm.querySelector('button[type="submit"]');
-        const msg = document.getElementById('adminResetPasswordMsg');
-        const targetId = document.getElementById('adminResetTargetId').value;
-        const newPassword = document.getElementById('adminResetNewPassword').value;
+        const btn = inlineResetPasswordForm.querySelector('button[type="submit"]');
+        const msg = document.getElementById('inlineResetPasswordMsg');
+        const targetId = document.getElementById('inlineResetTargetId').value;
+        const newPassword = document.getElementById('inlineResetNewPassword').value;
         
+        if (!targetId) {
+            msg.className = 'auth-error';
+            msg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Please select a member first.';
+            msg.style.display = 'block';
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
         msg.style.display = 'none';
         
         try {
-            // Call the secure RPC function to reset password
-            const { error } = await client.rpc('admin_reset_password', {
+            const { data, error } = await supabase.rpc('admin_reset_password', {
                 target_user_id: targetId,
                 new_password: newPassword
             });
             
             if (error) throw error;
             
-            closeModal('adminResetPasswordModal');
-            alert('Password successfully reset for the user.');
-        } catch (err) {
-            console.error('Reset password error:', err);
-            msg.textContent = 'Failed to reset password: ' + (err.message || err.error_description || 'Unknown error');
+            msg.className = 'auth-success';
+            msg.innerHTML = '<i class="fa-solid fa-check-circle"></i> Password has been successfully reset!';
             msg.style.display = 'block';
+            inlineResetPasswordForm.reset();
+            
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 5000);
+            
+        } catch (error) {
+            console.error('Password reset error:', error);
             msg.className = 'auth-error';
+            msg.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ' + (error.message || 'Failed to reset password. Ensure your account has admin privileges.');
+            msg.style.display = 'block';
         } finally {
             btn.disabled = false;
-            btn.innerHTML = 'Reset Password';
+            btn.innerHTML = '<i class="fa-solid fa-key"></i> Reset Password Now';
         }
     });
 }
