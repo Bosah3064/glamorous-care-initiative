@@ -1,5 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SupabaseService {
   static Future<void> init({required String url, required String anonKey}) async {
@@ -51,15 +54,20 @@ class SupabaseService {
     if (user != null) {
       // Insert into members table (same as the website portal does).
       // Uses upsert so it won't crash if the DB trigger already created the row.
-      await client.from('members').upsert({
-        'id': user.id,
-        'full_name': fullName,
-        'email': email,
-        'role': 'member',
-        'status': 'active',
-        'requires_password_reset': false,
-        'form_details': {},
-      }, onConflict: 'id');
+      // Wrapped in try-catch because the trigger may have already handled it.
+      try {
+        await client.from('members').upsert({
+          'id': user.id,
+          'full_name': fullName,
+          'email': email,
+          'role': 'member',
+          'status': 'active',
+          'requires_password_reset': false,
+          'form_details': {},
+        }, onConflict: 'id');
+      } catch (_) {
+        // The DB trigger already created the member row — that's fine
+      }
       await _recordLoginTime();
     } else {
       throw Exception('Sign up failed');
@@ -227,5 +235,74 @@ class SupabaseService {
 
   static Future<void> adminDeletePayment(String id) async {
     await client.from('payments').delete().eq('id', id);
+  }
+
+  static Future<void> adminSendNotification({
+    required List<String> memberIds,
+    required String title,
+    required String message,
+    String type = 'info',
+  }) async {
+    if (memberIds.isEmpty) return;
+    final payload = memberIds.map((id) => {
+      'member_id': id,
+      'title': title,
+      'message': message,
+      'type': type,
+      'is_read': false,
+    }).toList();
+    await client.from('notifications').insert(payload);
+  }
+
+  // ─── Admin Wallet (Expenses) ──────────────────────────────────
+  static Future<List<Map<String, dynamic>>> adminFetchAllExpenses() async {
+    final response = await client
+        .from('organization_expenses')
+        .select('*, members:added_by(full_name)')
+        .order('expense_date', ascending: false);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  static Future<void> adminAddExpense(Map<String, dynamic> data) async {
+    await client.from('organization_expenses').insert(data);
+  }
+
+  static Future<void> adminUpdateExpenseStatus(String id, String status) async {
+    await client.from('organization_expenses').update({'status': status}).eq('id', id);
+  }
+
+  // ─── Admin Password Reset ─────────────────────────────────────
+  /// Resets a user's password using the Supabase Auth Admin API.
+  /// Requires the service role key (from .env).
+  /// [userId] is the auth user UUID (same as members.id).
+  /// [newPassword] is the new plain-text password to set.
+  static Future<void> adminResetUserPassword({
+    required String userId,
+    required String newPassword,
+  }) async {
+    final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+    final serviceRoleKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'] ?? '';
+
+    if (supabaseUrl.isEmpty || serviceRoleKey.isEmpty) {
+      throw Exception('Missing Supabase URL or Service Role Key');
+    }
+
+    final url = Uri.parse('$supabaseUrl/auth/v1/admin/users/$userId');
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': serviceRoleKey,
+        'Authorization': 'Bearer $serviceRoleKey',
+      },
+      body: jsonEncode({
+        'password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      throw Exception(body['msg'] ?? body['message'] ?? 'Failed to reset password (${response.statusCode})');
+    }
   }
 }

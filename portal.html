@@ -661,23 +661,48 @@
                                     <label>Next of Kin Name</label>
                                     <input type="text" id="editMemberNokName">
                                 </div>
+                                <div class="form-row">
                                 <div class="form-group">
                                     <label>Next of Kin Phone</label>
                                     <input type="tel" id="editMemberNokPhone">
                                 </div>
-                            </div>
-                            
-                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Status</label>
                                     <select id="editMemberStatus">
                                         <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
                                         <option value="suspended">Suspended</option>
+                                        <option value="probation">Probation</option>
                                     </select>
                                 </div>
                             </div>
+                            
+                            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary" onclick="closeModal('editMemberModal')">Cancel</button>
+                                <button type="button" class="btn btn-secondary" onclick="openAdminResetPasswordModal()" style="background: #f59e0b; color: white; border: none; display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-lock-reset"></i> Reset Password</button>
+                                <button type="submit" class="btn btn-primary" style="display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
-                            <button type="submit" class="btn btn-primary w-100" style="margin-top: 15px;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                <!-- ADMIN RESET PASSWORD MODAL -->
+                <div id="adminResetPasswordModal" class="modal-overlay">
+                    <div class="modal-content" style="max-width: 400px;">
+                        <button onclick="closeModal('adminResetPasswordModal')" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                        <h3 style="margin-top: 0; color: #d97706; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;"><i class="fa-solid fa-lock-reset"></i> Reset Password</h3>
+                        <div class="auth-error" id="adminResetPasswordMsg" style="display:none; margin-bottom: 15px;"></div>
+                        <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 15px;">Enter a new password for <strong id="adminResetTargetName">this user</strong>.</p>
+                        <form id="adminResetPasswordForm" class="admin-form">
+                            <input type="hidden" id="adminResetTargetId">
+                            <div class="form-group">
+                                <label>New Password</label>
+                                <input type="text" id="adminResetNewPassword" required minlength="6" placeholder="Enter new password (min 6 chars)">
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary" onclick="closeModal('adminResetPasswordModal')">Cancel</button>
+                                <button type="submit" class="btn btn-primary" style="background: #d97706; border: none;">Reset Password</button>
+                            </div>
                         </form>
                     </div>
                 </div>

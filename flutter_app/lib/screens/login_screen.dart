@@ -304,7 +304,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
+                    
+                    // ── Terms & Policies Link ──
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/terms-and-conditions'),
+                        child: Text(
+                          'View Terms & Policies',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13, 
+                            color: AppColors.primary, 
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
 
                     // ── Back to Welcome ──
                     Center(

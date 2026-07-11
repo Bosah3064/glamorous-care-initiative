@@ -12,6 +12,9 @@ import 'screens/manage_payments_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/manage_notifications_screen.dart';
+import 'screens/admin_wallet_screen.dart';
+import 'screens/terms_and_conditions_screen.dart';
 import 'services/supabase_service.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -138,8 +141,11 @@ class GlamorousCareApp extends StatelessWidget {
         AdminPanelScreen.route: (_) => const AdminPanelScreen(),
         ManageMembersScreen.route: (_) => const ManageMembersScreen(),
         ManagePaymentsScreen.route: (_) => const ManagePaymentsScreen(),
+        ManageNotificationsScreen.route: (_) => const ManageNotificationsScreen(),
+        AdminWalletScreen.route: (_) => const AdminWalletScreen(),
         SettingsScreen.route: (_) => const SettingsScreen(),
         NotificationsScreen.route: (_) => const NotificationsScreen(),
+        TermsAndConditionsScreen.route: (_) => const TermsAndConditionsScreen(),
       },
     );
   }

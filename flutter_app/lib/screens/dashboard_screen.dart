@@ -9,6 +9,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_colors.dart';
 import '../services/supabase_service.dart';
 import '../services/offline_cache_service.dart';
@@ -19,6 +21,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'payment_history_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
+
+bool _hasPlayedGreeting = false;
 
 class DashboardScreen extends StatefulWidget {
   static const route = '/dashboard';
@@ -57,6 +61,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _confettiController.play();
       await _audioPlayer.play(AssetSource('sounds/success.wav'));
     } catch (_) {}
+
+    // Check if TTS is enabled and hasn't been played yet
+    if (!_hasPlayedGreeting) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final isTtsEnabled = prefs.getBool('voice_greeting') ?? true;
+        
+        if (isTtsEnabled) {
+          // Small delay so greeting doesn't overlap with celebration sound
+          await Future.delayed(const Duration(milliseconds: 1500));
+          
+          final tts = FlutterTts();
+          await tts.setLanguage("en-US");
+          await tts.setSpeechRate(0.4);   // Slower, more deliberate
+          await tts.setPitch(0.95);        // Slightly deeper, professional
+          await tts.setVolume(0.85);       // Soft, not loud
+          
+          // Try to pick a smooth American voice
+          final voices = await tts.getVoices;
+          if (voices is List) {
+            final americanVoice = voices.firstWhere(
+              (v) => v is Map && 
+                     (v['locale']?.toString().startsWith('en-US') ?? false),
+              orElse: () => null,
+            );
+            if (americanVoice != null && americanVoice is Map) {
+              await tts.setVoice({"name": americanVoice['name'].toString(), "locale": "en-US"});
+            }
+          }
+          
+          final user = SupabaseService.currentUser;
+          if (user != null) {
+            String name = (user.userMetadata?['full_name'] ?? 'Member').toString().split(' ').first;
+            await tts.speak("Welcome back, $name. To the Glamorous Care Initiative.");
+          }
+        }
+        _hasPlayedGreeting = true;
+      } catch (_) {}
+    }
   }
 
   @override
@@ -67,6 +110,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
+  bool _isStreamInitialized = false;
+  final Set<String> _seenNotificationIds = {};
+
   void _setupNotificationStream(String memberId) {
     _notificationSub?.cancel();
     _notificationSub = SupabaseService.notificationsStream(memberId).listen((notifs) {
@@ -75,11 +121,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final unreadNotifs = notifs.where((n) => n['is_read'] == false).toList();
       final newUnreadCount = unreadNotifs.length;
       
-      if (newUnreadCount > _unreadNotifications && _unreadNotifications != 0) {
-        // A new notification arrived!
-        final newest = unreadNotifs.first;
-        _showLiveNotificationPopup(newest);
+      if (_isStreamInitialized) {
+        // Find if there is any brand new unread notification we haven't seen yet
+        final brandNew = unreadNotifs.where((n) => !_seenNotificationIds.contains(n['id'].toString())).toList();
+        if (brandNew.isNotEmpty) {
+          _showLiveNotificationPopup(brandNew.first);
+        }
       }
+      
+      // Track all current unread notification IDs so we don't trigger them again
+      for (final n in unreadNotifs) {
+        _seenNotificationIds.add(n['id'].toString());
+      }
+      
+      _isStreamInitialized = true;
       
       setState(() {
         _unreadNotifications = newUnreadCount;
@@ -180,12 +235,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     {'key': 'date_of_birth', 'label': 'Date of Birth', 'isFieldOnMember': false},
     {'key': 'gender', 'label': 'Gender', 'isFieldOnMember': false},
     {'key': 'marital_status', 'label': 'Marital Status', 'isFieldOnMember': false},
-    {'key': 'national_id_number', 'label': 'National ID Number', 'isFieldOnMember': false},
+    {'key': 'id_number', 'label': 'National ID Number', 'isFieldOnMember': false},
+    {'key': 'branch', 'label': 'Branch', 'isFieldOnMember': false},
     {'key': 'occupation', 'label': 'Occupation', 'isFieldOnMember': false},
-    {'key': 'next_of_kin_full_name', 'label': 'Next of Kin Name', 'isFieldOnMember': false},
-    {'key': 'next_of_kin_national_id_number', 'label': 'Next of Kin ID', 'isFieldOnMember': false},
-    {'key': 'next_of_kin_phone_number', 'label': 'Next of Kin Phone', 'isFieldOnMember': false},
-    {'key': 'relationship_to_you', 'label': 'Relationship to Next of Kin', 'isFieldOnMember': false},
+    {'key': 'next_of_kin_name', 'label': 'Next of Kin Name', 'isFieldOnMember': false},
+    {'key': 'next_of_kin_phone', 'label': 'Next of Kin Phone', 'isFieldOnMember': false},
+    {'key': 'dependants', 'label': 'Any Dependants?', 'isFieldOnMember': false},
+    {'key': 'dependant_count', 'label': 'Number of Dependants', 'isFieldOnMember': false},
   ];
 
   // Match website's variationsMap — check legacy field name variations
@@ -193,12 +249,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'date_of_birth': ['date of birth', 'dob', 'date_of_birth'],
     'gender': ['gender'],
     'marital_status': ['marital status', 'marital_status'],
-    'national_id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
+    'id_number': ['national id number', 'id number', 'national id', 'id_number', 'national_id_number'],
+    'branch': ['branch'],
     'occupation': ['occupation', 'profession', 'occupation/profession'],
-    'next_of_kin_full_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
-    'next_of_kin_national_id_number': ['next of kin national id number', 'next of kin national id', 'next_of_kin_id', 'next_of_kin_national_id_number'],
-    'next_of_kin_phone_number': ['next of kin phone number', 'next of kin phone', 'next_of_kin_phone', 'next_of_kin_phone_number'],
-    'relationship_to_you': ['relationship to you', 'relationship_to_you', 'next of kin relationship', 'relationship', 'next_of_kin_relationship'],
+    'next_of_kin_name': ['next of kin full name', 'next of kin name', 'next_of_kin_name', 'next_of_kin_full_name'],
+    'next_of_kin_phone': ['next of kin phone', 'next of kin_phone', 'next_of_kin_phone_number'],
+    'dependants': ['dependants', 'dependents'],
+    'dependant_count': ['dependant_count', 'number of dependants'],
   };
 
   /// Resolve a field value from form_details using canonical key + variations (matches website)
@@ -270,8 +327,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final controllers = <String, TextEditingController>{};
     final genderOptions = ['Male', 'Female'];
     final maritalOptions = ['Married', 'Single', 'Divorced', 'Widowed'];
+    final dependantsOptions = ['Yes', 'No'];
     String? selectedGender;
     String? selectedMarital;
+    String? selectedDependants;
 
     for (final field in missingFields) {
       controllers[field['key'] as String] = TextEditingController();
@@ -354,6 +413,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             items: maritalOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                             onChanged: (val) => setStateDialog(() => selectedMarital = val),
+                          ),
+                        );
+                      }
+
+                      // Dependants dropdown
+                      if (key == 'dependants') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedDependants,
+                            decoration: InputDecoration(
+                              labelText: label,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                            items: dependantsOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                            onChanged: (val) => setStateDialog(() => selectedDependants = val),
                           ),
                         );
                       }
@@ -462,6 +538,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             value = selectedGender ?? '';
                           } else if (key == 'marital_status') {
                             value = selectedMarital ?? '';
+                          } else if (key == 'dependants') {
+                            value = selectedDependants ?? '';
                           } else {
                             value = controllers[key]?.text.trim() ?? '';
                           }
@@ -596,6 +674,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double get _totalPaid {
     return _payments
+        .where((p) {
+          final type = (p['payment_type'] ?? p['type'] ?? p['month'] ?? '').toString().toLowerCase();
+          return !type.contains('registration') && !type.contains('reg');
+        })
         .where((p) => (p['status'] ?? '').toString().toLowerCase() == 'paid')
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
   }
@@ -617,12 +699,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
   }
 
-  // Total Savings = only monthly contributions (paid), excluding registration
+  // Total Savings = only monthly contributions (paid), excluding registration AND paid out funds
   double get _totalSavings {
     return _payments
         .where((p) {
           final type = (p['payment_type'] ?? p['type'] ?? p['month'] ?? '').toString().toLowerCase();
-          return !type.contains('registration') && !type.contains('reg');
+          final payoutStatus = (p['payout_status'] ?? '').toString().toLowerCase();
+          return !type.contains('registration') && !type.contains('reg') && payoutStatus != 'paid_out';
         })
         .where((p) => (p['status'] ?? '').toString().toLowerCase() == 'paid')
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
@@ -664,6 +747,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final parts = _memberName.split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  String get _greetingEmoji {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return '☀️';
+    if (hour < 17) return '🌤️';
+    return '🌙';
   }
 
   List<Map<String, dynamic>> get _recentPayments {
@@ -709,104 +806,141 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     slivers: [
-                      // --- Custom App Bar ---
+                      // --- Premium Header ---
                       SliverToBoxAdapter(
-                        child: SafeArea(
-                          bottom: false,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [AppColors.primary, AppColors.purple],
-                                    ),
-                                    shape: BoxShape.circle, // Circular logo
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _initials,
-                                      style: GoogleFonts.outfit(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Hello, $_firstName \u{1F44B}',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Welcome back to your dashboard',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 13,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.pushNamed(context, NotificationsScreen.route).then((_) => _loadData());
-                                  },
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF1d5f99), Color(0xFF2a4a7f), Color(0xFF683669)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(32),
+                              bottomRight: Radius.circular(32),
+                            ),
+                          ),
+                          child: SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(12),
+                                        width: 52,
+                                        height: 52,
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(14),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.04),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white.withOpacity(0.5), width: 2.5),
+                                          gradient: LinearGradient(
+                                            colors: [Colors.white.withOpacity(0.3), Colors.white.withOpacity(0.1)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
                                         ),
-                                        child: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
-                                      ),
-                                      if (_unreadNotifications > 0)
-                                        Positioned(
-                                          right: -4,
-                                          top: -4,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.red,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Text(
-                                              _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
-                                              style: GoogleFonts.outfit(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w800,
-                                              ),
+                                        child: Center(
+                                          child: Text(
+                                            _initials,
+                                            style: GoogleFonts.outfit(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 18,
                                             ),
                                           ),
                                         ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '$_greeting $_greetingEmoji',
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.white.withOpacity(0.7),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _firstName,
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 24,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.pushNamed(context, NotificationsScreen.route).then((_) => _loadData());
+                                        },
+                                        child: Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(14),
+                                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                              ),
+                                              child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                                            ),
+                                            if (_unreadNotifications > 0)
+                                              Positioned(
+                                                right: -4,
+                                                top: -4,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(6),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.red,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: const Color(0xFF1d5f99), width: 2),
+                                                  ),
+                                                  child: Text(
+                                                    _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 20),
+                                  // Quick stats strip inside header
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildHeaderStat('Savings', _balancesVisible ? 'KES ${_totalSavings.toStringAsFixed(0)}' : '****', Icons.savings_rounded),
+                                        Container(width: 1, height: 32, color: Colors.white.withOpacity(0.2)),
+                                        _buildHeaderStat('Pending', _balancesVisible ? 'KES ${_totalPending.toStringAsFixed(0)}' : '****', Icons.schedule_rounded),
+                                        Container(width: 1, height: 32, color: Colors.white.withOpacity(0.2)),
+                                        _buildHeaderStat('Payments', '${_payments.length}', Icons.receipt_long_rounded),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -882,12 +1016,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
 
-                      // --- Summary Stats ---
+                      // --- Quick Actions ---
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                           child: Text(
-                            'Overview',
+                            'Quick Actions',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 100,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                            children: [
+                              _buildQuickAction(Icons.visibility_rounded, 'Toggle\nBalances', AppColors.primary, () {
+                                setState(() => _balancesVisible = !_balancesVisible);
+                              }),
+                              const SizedBox(width: 12),
+                              _buildQuickAction(Icons.receipt_long_rounded, 'Payment\nHistory', AppColors.success, () {
+                                Navigator.pushNamed(context, PaymentHistoryScreen.route);
+                              }),
+                              const SizedBox(width: 12),
+                              _buildQuickAction(Icons.download_rounded, 'Save\nCard', AppColors.purple, _showDownloadOptions),
+                              const SizedBox(width: 12),
+                              _buildQuickAction(Icons.settings_rounded, 'Settings', AppColors.warning, () {
+                                Navigator.pushNamed(context, SettingsScreen.route);
+                              }),
+                              const SizedBox(width: 12),
+                              _buildQuickAction(Icons.notifications_rounded, 'Alerts', AppColors.red, () {
+                                Navigator.pushNamed(context, NotificationsScreen.route);
+                              }),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // --- Financial Overview ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                          child: Text(
+                            'Financial Overview',
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -902,20 +1079,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Total Paid',
-                                  amount: _balancesVisible ? 'KES ${_totalPaid.toStringAsFixed(0)}' : '****',
-                                  icon: Icons.check_circle_rounded,
-                                  color: AppColors.success,
+                                child: _buildGradientStatCard(
+                                  'Total Paid',
+                                  _balancesVisible ? 'KES ${_totalPaid.toStringAsFixed(0)}' : '****',
+                                  Icons.check_circle_rounded,
+                                  [const Color(0xFF16A34A), const Color(0xFF22C55E)],
                                 ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Pending',
-                                  amount: _balancesVisible ? 'KES ${_totalPending.toStringAsFixed(0)}' : '****',
-                                  icon: Icons.pending_actions_rounded,
-                                  color: AppColors.warning,
+                                child: _buildGradientStatCard(
+                                  'Pending',
+                                  _balancesVisible ? 'KES ${_totalPending.toStringAsFixed(0)}' : '****',
+                                  Icons.pending_actions_rounded,
+                                  [const Color(0xFFF59E0B), const Color(0xFFFBBF24)],
                                 ),
                               ),
                             ],
@@ -928,23 +1105,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Savings',
-                                  amount: _balancesVisible ? 'KES ${_totalSavings.toStringAsFixed(0)}' : '****',
-                                  icon: Icons.savings_rounded,
-                                  color: AppColors.primary,
+                                child: _buildGradientStatCard(
+                                  'Savings',
+                                  _balancesVisible ? 'KES ${_totalSavings.toStringAsFixed(0)}' : '****',
+                                  Icons.savings_rounded,
+                                  [const Color(0xFF1d5f99), const Color(0xFF3B82F6)],
                                 ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Reg. Fee',
-                                  amount: _balancesVisible ? 'KES ${_registrationFee.toStringAsFixed(0)}' : '****',
-                                  icon: Icons.app_registration_rounded,
-                                  color: AppColors.purple,
+                                child: _buildGradientStatCard(
+                                  'Reg. Fee',
+                                  _balancesVisible ? 'KES ${_registrationFee.toStringAsFixed(0)}' : '****',
+                                  Icons.app_registration_rounded,
+                                  [const Color(0xFF683669), const Color(0xFF9333EA)],
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+                      
+                      // --- Invite Banner ---
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF8B5CF6), Color(0xFFC084FC)], // Purple vibrant gradient
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 28),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Invite & Earn',
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Invite a member and earn KES 100 reward!',
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Share feature coming soon!', style: GoogleFonts.outfit()),
+                                        backgroundColor: AppColors.primary,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFF8B5CF6),
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  ),
+                                  child: Text('Share', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1210,6 +1469,134 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderStat(String label, String value, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white.withOpacity(0.6), size: 16),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            color: Colors.white.withOpacity(0.5),
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFF3F4F6)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientStatCard(String title, String amount, IconData icon, List<Color> colors) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [colors[0].withOpacity(0.08), colors[1].withOpacity(0.04)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors[0].withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: colors[0].withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: colors),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            amount,
+            style: GoogleFonts.outfit(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_colors.dart';
 import '../services/supabase_service.dart';
@@ -15,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _member;
   bool _isLoading = true;
+  bool _voiceGreetingEnabled = true;
 
   String _getAccountNumber() {
     if (_member == null) return 'N/A';
@@ -35,6 +38,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadMember();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _voiceGreetingEnabled = prefs.getBool('voice_greeting') ?? true;
+    });
+  }
+
+  Future<void> _toggleVoiceGreeting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('voice_greeting', value);
+    setState(() {
+      _voiceGreetingEnabled = value;
+    });
   }
 
   Future<void> _loadMember() async {
@@ -356,6 +375,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
+                // App Preferences section
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                    child: Text(
+                      'App Preferences',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFF3F4F6)),
+                      ),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            activeColor: AppColors.primary,
+                            title: Text('Voice Greeting', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            subtitle: Text('Welcome message on startup', style: GoogleFonts.outfit(fontSize: 12, color: AppColors.textSecondary)),
+                            secondary: const Icon(Icons.record_voice_over_rounded, color: AppColors.primary, size: 24),
+                            value: _voiceGreetingEnabled,
+                            onChanged: _toggleVoiceGreeting,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
                 // App section
                 SliverToBoxAdapter(
                   child: Padding(
@@ -459,8 +517,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _buildActionRow(Icons.receipt_long_rounded, 'Manage Payments', () {
                               Navigator.pushNamed(context, '/manage-payments');
                             }),
+                            _buildDivider(),
+                            _buildActionRow(Icons.campaign_rounded, 'Send Notifications', () {
+                              Navigator.pushNamed(context, '/manage-notifications');
+                            }),
+                            _buildDivider(),
+                            _buildActionRow(Icons.account_balance_wallet_rounded, 'Organization Wallet', () {
+                              Navigator.pushNamed(context, '/admin-wallet');
+                            }),
                           ],
                         ),
+                      ),
+                    ),
+                  ),
+                  
+                  // About & Policies
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                      child: Text(
+                        'ABOUT & POLICIES',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFF3F4F6)),
+                        ),
+                        child: _buildActionRow(Icons.policy_rounded, 'Terms & Policies', () {
+                          Navigator.pushNamed(context, '/terms-and-conditions');
+                        }),
                       ),
                     ),
                   ),

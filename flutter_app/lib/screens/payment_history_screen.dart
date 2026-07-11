@@ -52,6 +52,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 
   double get _totalPaid {
     return _payments
+        .where((p) {
+          final type = (p['payment_type'] ?? p['type'] ?? p['month'] ?? '').toString().toLowerCase();
+          return !type.contains('registration') && !type.contains('reg');
+        })
         .where((p) => (p['status'] ?? '').toString().toLowerCase() == 'paid')
         .fold(0.0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '0')?.toDouble() ?? 0));
   }

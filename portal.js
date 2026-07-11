@@ -1943,6 +1943,56 @@ if (editMemberForm) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Changes';
     });
+// ADMIN RESET PASSWORD
+window.openAdminResetPasswordModal = function() {
+    const targetId = document.getElementById('editMemberId').value;
+    const targetName = document.getElementById('editMemberName').value;
+    
+    if (!targetId) return;
+    
+    document.getElementById('adminResetTargetId').value = targetId;
+    document.getElementById('adminResetTargetName').textContent = targetName || 'this user';
+    document.getElementById('adminResetNewPassword').value = '';
+    document.getElementById('adminResetPasswordMsg').style.display = 'none';
+    
+    closeModal('editMemberModal');
+    openModal('adminResetPasswordModal');
+};
+
+const adminResetPasswordForm = document.getElementById('adminResetPasswordForm');
+if (adminResetPasswordForm) {
+    adminResetPasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = adminResetPasswordForm.querySelector('button[type="submit"]');
+        const msg = document.getElementById('adminResetPasswordMsg');
+        const targetId = document.getElementById('adminResetTargetId').value;
+        const newPassword = document.getElementById('adminResetNewPassword').value;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+        msg.style.display = 'none';
+        
+        try {
+            // Call the secure RPC function to reset password
+            const { error } = await client.rpc('admin_reset_password', {
+                target_user_id: targetId,
+                new_password: newPassword
+            });
+            
+            if (error) throw error;
+            
+            closeModal('adminResetPasswordModal');
+            alert('Password successfully reset for the user.');
+        } catch (err) {
+            console.error('Reset password error:', err);
+            msg.textContent = 'Failed to reset password: ' + (err.message || err.error_description || 'Unknown error');
+            msg.style.display = 'block';
+            msg.className = 'auth-error';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Reset Password';
+        }
+    });
 }
 
 // EDIT PAYMENT

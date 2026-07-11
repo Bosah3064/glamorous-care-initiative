@@ -74,29 +74,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (_) {}
   }
 
-  IconData _iconForType(String type) {
+  IconData _iconFor(String type, String title, String message) {
+    final t = title.toLowerCase();
+    final m = message.toLowerCase();
+    
+    if (t.contains('approved') || m.contains('approved') || t.contains('✅')) return Icons.verified_rounded;
+    if (t.contains('pending') || m.contains('pending')) return Icons.hourglass_empty_rounded;
+    if (t.contains('recorded') || m.contains('recorded')) return Icons.receipt_long_rounded;
+    if (t.contains('rejected') || m.contains('failed')) return Icons.error_outline_rounded;
+    if (m.contains('kes')) return Icons.account_balance_wallet_rounded;
+    
     switch (type) {
-      case 'payment':
-        return Icons.payment_rounded;
-      case 'approval':
-        return Icons.check_circle_rounded;
-      case 'system':
-        return Icons.info_rounded;
-      default:
-        return Icons.notifications_rounded;
+      case 'payment': return Icons.account_balance_wallet_rounded;
+      case 'approval': return Icons.verified_rounded;
+      case 'system': return Icons.info_rounded;
+      default: return Icons.notifications_active_rounded;
     }
   }
 
-  Color _colorForType(String type) {
+  Color _colorFor(String type, String title, String message) {
+    final t = title.toLowerCase();
+    final m = message.toLowerCase();
+    
+    if (t.contains('approved') || m.contains('approved') || t.contains('✅')) return AppColors.success;
+    if (t.contains('pending') || m.contains('pending')) return Colors.orange.shade600;
+    if (t.contains('recorded') || m.contains('recorded')) return const Color(0xFF3B82F6); // Bright Blue
+    if (t.contains('rejected') || m.contains('failed')) return Colors.red.shade600;
+    if (m.contains('kes')) return AppColors.primary;
+
     switch (type) {
-      case 'payment':
-        return AppColors.primary;
-      case 'approval':
-        return AppColors.success;
-      case 'system':
-        return AppColors.warning;
-      default:
-        return AppColors.textMuted;
+      case 'payment': return AppColors.primary;
+      case 'approval': return AppColors.success;
+      case 'system': return Colors.purple.shade600;
+      default: return AppColors.primary;
     }
   }
 
@@ -242,34 +252,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   final time = _timeAgo(n['created_at']?.toString());
 
                   return Padding(
-                    padding: EdgeInsets.fromLTRB(20, index == 0 ? 20 : 0, 20, 12),
+                    padding: EdgeInsets.fromLTRB(20, index == 0 ? 20 : 0, 20, 14),
                     child: GestureDetector(
                       onTap: () {
                         if (!isRead) _markAsRead(n['id'].toString());
                       },
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(16),
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: isRead ? Colors.white : AppColors.primary.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(18),
+                          color: isRead ? Colors.white : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isRead ? const Color(0xFFF3F4F6) : AppColors.primary.withOpacity(0.15),
+                            color: isRead ? const Color(0xFFF3F4F6) : AppColors.primary.withOpacity(0.3),
+                            width: isRead ? 1 : 1.5,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isRead ? Colors.black.withOpacity(0.02) : AppColors.primary.withOpacity(0.08),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            )
+                          ],
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: _colorForType(type).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(14),
+                                color: isRead ? _colorFor(type, title, message).withOpacity(0.08) : _colorFor(type, title, message).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Icon(_iconForType(type), color: _colorForType(type), size: 22),
+                              child: Icon(_iconFor(type, title, message), color: _colorFor(type, title, message), size: 24),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,41 +299,50 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         child: Text(
                                           title,
                                           style: GoogleFonts.outfit(
-                                            fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
-                                            fontSize: 15,
-                                            color: AppColors.textPrimary,
+                                            fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
+                                            fontSize: 16,
+                                            color: isRead ? AppColors.textPrimary.withOpacity(0.8) : AppColors.textPrimary,
+                                            letterSpacing: -0.3,
                                           ),
                                         ),
                                       ),
                                       if (!isRead)
                                         Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: AppColors.primary,
-                                            shape: BoxShape.circle,
+                                          margin: const EdgeInsets.only(left: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(20),
                                           ),
+                                          child: Text('NEW', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primary)),
                                         ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 6),
                                   Text(
                                     message,
                                     style: GoogleFonts.outfit(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
+                                      fontSize: 14,
+                                      color: isRead ? AppColors.textSecondary : const Color(0xFF374151),
                                       height: 1.4,
                                     ),
-                                    maxLines: 2,
+                                    maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    time,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      color: AppColors.textMuted,
-                                    ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.access_time_rounded, size: 12, color: AppColors.textMuted.withOpacity(0.7)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        time,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

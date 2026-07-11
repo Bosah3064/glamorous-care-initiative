@@ -218,7 +218,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
+                    
+                    // ── Terms & Policies Link ──
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/terms-and-conditions'),
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'By creating an account, you agree to our ',
+                            style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600),
+                            children: [
+                              TextSpan(
+                                text: 'Terms & Policies',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13, 
+                                  color: AppColors.primary, 
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
 
                     // ── Register Button ──
                     SizedBox(
