@@ -1991,18 +1991,11 @@ window.openAdminResetPasswordModal = function() {
     document.getElementById('adminResetNewPassword').value = '';
     document.getElementById('adminResetPasswordMsg').style.display = 'none';
     
-    // Show reset modal ON TOP of edit modal (don't close edit modal to prevent scroll jump)
-    const resetModal = document.getElementById('adminResetPasswordModal');
-    if (resetModal) {
-        resetModal.style.cssText = 'display:flex; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999999; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; padding:20px; overflow-y:auto;';
-        resetModal.classList.remove('fullscreen');
-        
-        // Make sure the inner content is also visible
-        const content = resetModal.querySelector('.modal-content');
-        if (content) {
-            content.style.cssText = 'max-width:420px; width:100%; background:#fff; border-radius:15px; padding:30px; position:relative; box-shadow:0 25px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto;';
-        }
-    }
+    // Close edit modal first
+    closeModal('editMemberModal');
+    
+    // Open reset modal natively, but turn OFF fullscreen so it's a popup
+    openModal('adminResetPasswordModal', { fullscreen: false, scrollToTop: false });
 };
 
 const adminResetPasswordForm = document.getElementById('adminResetPasswordForm');
