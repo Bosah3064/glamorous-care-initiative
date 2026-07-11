@@ -1125,6 +1125,8 @@ function renderBulkPaymentMembers(members) {
 function populateMemberDropdown(members) {
     const select = document.getElementById('paymentMember');
     const selectView = document.getElementById('viewPaymentsMember');
+    const notifRecipient = document.getElementById('notifRecipient');
+    const inlineResetTarget = document.getElementById('inlineResetTargetId');
     
     if (select) {
         select.innerHTML = '<option value="">— Choose a member —</option>';
