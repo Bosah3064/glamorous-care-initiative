@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../app_colors.dart';
 import '../services/supabase_service.dart';
 import 'dashboard_screen.dart';
+import 'force_change_password_screen.dart';
 import 'reset_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +44,17 @@ class _LoginScreenState extends State<LoginScreen> {
       await SupabaseService.signIn(email, password);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, DashboardScreen.route);
+      
+      // Fetch member to check if they need a password reset
+      final memberData = await SupabaseService.fetchCurrentMember();
+      
+      if (!mounted) return;
+
+      if (memberData != null && memberData['requires_password_reset'] == true) {
+        Navigator.pushReplacementNamed(context, ForceChangePasswordScreen.route);
+      } else {
+        Navigator.pushReplacementNamed(context, DashboardScreen.route);
+      }
     } catch (e) {
       if (!mounted) return;
       _showError(e.toString());

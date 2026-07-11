@@ -19,6 +19,8 @@ import 'services/supabase_service.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
+import 'screens/force_change_password_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -136,6 +138,7 @@ class GlamorousCareApp extends StatelessWidget {
         LoginScreen.route: (_) => const LoginScreen(),
         RegisterScreen.route: (_) => const RegisterScreen(),
         ResetPasswordScreen.route: (_) => const ResetPasswordScreen(),
+        ForceChangePasswordScreen.route: (_) => const ForceChangePasswordScreen(),
         DashboardScreen.route: (_) => const DashboardScreen(),
         PaymentHistoryScreen.route: (_) => const PaymentHistoryScreen(),
         AdminPanelScreen.route: (_) => const AdminPanelScreen(),
