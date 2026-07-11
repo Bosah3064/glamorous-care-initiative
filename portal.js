@@ -541,6 +541,7 @@ async function loadAdminData() {
     const { data: members } = await client.from('members').select('*').order('full_name');
     const { data: payments } = await client.from('payments').select('*').order('payment_date', { ascending: true });
     allMembers = members || [];
+    window.allPayments = payments || [];
     renderMembersList(allMembers, ""); // pass empty string to hide by default
     populateMemberDropdown(allMembers);
     renderPaymentAnalytics(payments || []);
@@ -1009,7 +1010,8 @@ function renderMembersList(members, searchTerm = "") {
         list.innerHTML = '<p style="text-align:center;color:#ef4444;padding: 10px;">No members found matching your search.</p>';
         return;
     }
-    list.innerHTML = members.map(m => {
+
+    const tableRows = members.map(m => {
         const roleColors = {
             'admin': 'background: #dbeafe; color: #2563eb;',
             'treasury': 'background: #fef3c7; color: #d97706;',
@@ -1021,27 +1023,59 @@ function renderMembersList(members, searchTerm = "") {
         const statusLabel = (m.status === 'approved' || m.status === 'active') ? 'Registered' : (m.status.charAt(0).toUpperCase() + m.status.slice(1));
         const statusSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${statusBadgeStyle}">${statusLabel}</span>`;
         
-        let roleSpan = '';
+        let roleSpan = '<span style="color:#9ca3af;">Member</span>';
         if (m.role && m.role !== 'member') {
             const badgeStyle = roleColors[m.role] || roleColors['admin'];
             const roleLabel = m.role === 'vice_chairperson' ? 'Vice Chairperson' : m.role.charAt(0).toUpperCase() + m.role.slice(1);
-            roleSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}">${roleLabel}</span>`;
+            roleSpan = `<span style="padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; ${badgeStyle}; white-space: nowrap;">${roleLabel}</span>`;
+        }
+
+        // Calculate Total Savings from payments data
+        let totalSavings = 0;
+        if (window.allPayments && Array.isArray(window.allPayments)) {
+            totalSavings = window.allPayments
+                .filter(p => p.member_id === m.id && p.payment_type === 'monthly_saving' && p.status === 'completed')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
         }
 
         return `
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; flex-wrap: wrap; gap: 10px; cursor: default;" onmouseover="this.style.background='#f8fafc';this.style.borderColor='var(--color-blue)'" onmouseout="this.style.background='';this.style.borderColor='#f3f4f6'">
-                <div style="flex: 1;">
-                    <div style="font-weight: 600;">${m.full_name}</div>
-                    <div style="color: #6b7280; font-size: 0.9rem;">${m.email}${m.phone ? ' • ' + m.phone : ''}</div>
-                </div>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    ${statusSpan}
-                    ${roleSpan}
-                    <button onclick="openEditMemberModal('${m.id}')" style="background: var(--color-blue); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; margin-left: 5px;"><i class="fa-solid fa-pen"></i> Edit</button>
-                </div>
-            </div>
+            <tr style="border-bottom: 1px solid #f3f4f6; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+                <td style="padding: 12px 15px; font-weight: 600;">${m.full_name}</td>
+                <td style="padding: 12px 15px; color: #6b7280; font-size: 0.9rem;">
+                    <div>${m.email || ''}</div>
+                    ${m.phone ? `<div style="font-size: 0.8rem; margin-top: 2px;">${m.phone}</div>` : ''}
+                </td>
+                <td style="padding: 12px 15px;">${statusSpan}</td>
+                <td style="padding: 12px 15px;">${roleSpan}</td>
+                <td style="padding: 12px 15px; font-weight: bold; color: #16a34a;">KES ${totalSavings.toLocaleString()}</td>
+                <td style="padding: 12px 15px; text-align: right;">
+                    <button onclick="openEditMemberModal('${m.id}')" style="background: var(--color-blue); color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                        <i class="fa-solid fa-pen"></i> Edit
+                    </button>
+                </td>
+            </tr>
         `;
     }).join('');
+
+    list.innerHTML = `
+        <div style="overflow-x: auto; border-radius: 10px; border: 1px solid #e5e7eb;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 700px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f9fafb, #f3f4f6); border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Member Name</th>
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Contact Info</th>
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Role</th>
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Savings</th>
+                        <th style="padding: 14px 15px; color: #374151; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 function renderBulkPaymentMembers(members) {
