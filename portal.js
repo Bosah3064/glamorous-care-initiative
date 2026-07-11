@@ -1943,6 +1943,8 @@ if (editMemberForm) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-save"></i> Save Changes';
     });
+}
+
 // ADMIN RESET PASSWORD
 window.openAdminResetPasswordModal = function() {
     const targetId = document.getElementById('editMemberId').value;
