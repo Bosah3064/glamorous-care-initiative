@@ -1748,8 +1748,6 @@ async function checkAuth() {
     if (session) {
         currentSessionUser = session.user;
         hideRegisterLinks();
-        setupInactivityHandlers();
-        resetInactivityTimer();
         if (document.getElementById('portal')) {
             await checkUserAndLoadDashboard(session.user);
         }
