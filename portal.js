@@ -2009,7 +2009,7 @@ if (inlineResetPasswordForm) {
         msg.style.display = 'none';
         
         try {
-            const { data, error } = await supabase.rpc('admin_reset_password', {
+            const { data, error } = await client.rpc('admin_reset_password', {
                 target_user_id: targetId,
                 new_password: newPassword
             });
