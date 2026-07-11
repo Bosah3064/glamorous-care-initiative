@@ -1991,8 +1991,20 @@ window.openAdminResetPasswordModal = function() {
     document.getElementById('adminResetNewPassword').value = '';
     document.getElementById('adminResetPasswordMsg').style.display = 'none';
     
+    // Close edit modal first
     closeModal('editMemberModal');
-    openModal('adminResetPasswordModal');
+    
+    // Open reset modal as a small centered popup (NOT fullscreen)
+    const resetModal = document.getElementById('adminResetPasswordModal');
+    if (resetModal) {
+        resetModal.style.display = 'flex';
+        resetModal.style.zIndex = '200000';
+        resetModal.style.alignItems = 'center';
+        resetModal.style.justifyContent = 'center';
+        resetModal.style.padding = '20px';
+        resetModal.classList.remove('fullscreen');
+        document.body.style.overflow = 'hidden';
+    }
 };
 
 const adminResetPasswordForm = document.getElementById('adminResetPasswordForm');
