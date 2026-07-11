@@ -33,6 +33,7 @@ class _ManagePaymentsScreenState extends State<ManagePaymentsScreen>
   // ── Tab 1 state ──
   String _selectedFilter = 'All';
   String _searchQuery = '';
+  String _summarySearchQuery = '';
 
   // ── Tab 2 state ──
   String _memberSearchQuery = '';
@@ -55,7 +56,7 @@ class _ManagePaymentsScreenState extends State<ManagePaymentsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _bulkMonth =
         '${_monthNames[DateTime.now().month - 1]} ${DateTime.now().year}';
     _loadData();
@@ -1796,6 +1797,179 @@ class _ManagePaymentsScreenState extends State<ManagePaymentsScreen>
               style: GoogleFonts.outfit(color: color, fontSize: 11)),
         ],
       ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  TAB 4 – SUMMARY
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSummaryTab() {
+    final filteredMembers = _summarySearchQuery.isEmpty
+        ? _members
+        : _members.where((m) {
+            final n = (m['full_name']?.toString() ?? '').toLowerCase();
+            return n.contains(_summarySearchQuery.toLowerCase());
+          }).toList();
+
+    // Calculate totals
+    final List<Map<String, dynamic>> summaryData = [];
+    for (var member in filteredMembers) {
+      final memberId = member['id'];
+      final memberPayments = _payments.where((p) =>
+          p['member_id'] == memberId &&
+          (p['status']?.toString().toLowerCase() ?? '') == 'completed');
+
+      double totalAmount = 0.0;
+      int paymentCount = 0;
+
+      for (var p in memberPayments) {
+        final amountStr = p['amount']?.toString() ?? '0';
+        totalAmount += double.tryParse(amountStr) ?? 0.0;
+        paymentCount++;
+      }
+
+      summaryData.add({
+        'member': member,
+        'total': totalAmount,
+        'count': paymentCount,
+      });
+    }
+
+    // Sort by total descending
+    summaryData.sort((a, b) =>
+        (b['total'] as double).compareTo(a['total'] as double));
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            onChanged: (v) => setState(() => _summarySearchQuery = v),
+            decoration: InputDecoration(
+              hintText: 'Search members...',
+              prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: summaryData.isEmpty
+              ? Center(
+                  child: Text('No members found',
+                      style: GoogleFonts.outfit(color: AppColors.textMuted)))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: summaryData.length,
+                  itemBuilder: (context, index) {
+                    final data = summaryData[index];
+                    final member = data['member'];
+                    final total = data['total'] as double;
+                    final count = data['count'] as int;
+
+                    Color amountColor = AppColors.primary;
+                    if (total >= 10000) {
+                      amountColor = Colors.green.shade700;
+                    } else if (total >= 5000) {
+                      amountColor = Colors.orange.shade700;
+                    } else if (total < 1000) {
+                      amountColor = AppColors.red;
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            child: Text(
+                              (member['full_name']?.toString() ?? '?')
+                                  .characters
+                                  .first
+                                  .toUpperCase(),
+                              style: GoogleFonts.outfit(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(member['full_name'] ?? 'Unknown',
+                                    style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                                Text(member['email'] ?? '',
+                                    style: GoogleFonts.outfit(
+                                        color: AppColors.textMuted,
+                                        fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text('$count payments',
+                                      style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('Total Paid',
+                                  style: GoogleFonts.outfit(
+                                      color: AppColors.textMuted,
+                                      fontSize: 12)),
+                              Text(
+                                '\$${total.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  color: amountColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

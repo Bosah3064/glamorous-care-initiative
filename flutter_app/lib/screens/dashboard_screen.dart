@@ -794,26 +794,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Stack(
-              children: [
-                RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: _loadData,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    slivers: [
-                      // --- Premium Header ---
-                      SliverToBoxAdapter(
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF1d5f99), Color(0xFF2a4a7f), Color(0xFF683669)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Exit App?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            content: Text('Are you sure you want to exit the app?', style: GoogleFonts.outfit()),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel', style: GoogleFonts.outfit(color: AppColors.textMuted)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Exit', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ) ?? false;
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+            : Stack(
+                children: [
+                  RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: _loadData,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      slivers: [
+                        // --- Premium Header ---
+                        SliverToBoxAdapter(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF1d5f99), Color(0xFF2a4a7f), Color(0xFF683669)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(32),
@@ -1432,7 +1464,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-        ),
+      ),
       ),
     );
   }

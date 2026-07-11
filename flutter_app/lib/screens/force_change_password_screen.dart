@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../app_colors.dart';
 import 'dashboard_screen.dart';
@@ -46,7 +47,7 @@ class _ForceChangePasswordScreenState extends State<ForceChangePasswordScreen> {
     try {
       // Update password using Supabase Auth
       await SupabaseService.client.auth.updateUser(
-        import('package:supabase_flutter/supabase_flutter.dart').UserAttributes(password: password),
+        UserAttributes(password: password),
       );
 
       // Update members table flag
@@ -108,7 +109,7 @@ class _ForceChangePasswordScreenState extends State<ForceChangePasswordScreen> {
       appBar: AppBar(
         title: Text('Change Password', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        foregroundColor: Colors.black87,
         elevation: 0,
         centerTitle: true,
         automaticallyImplyLeading: false, // Prevent going back without changing
@@ -134,7 +135,7 @@ class _ForceChangePasswordScreenState extends State<ForceChangePasswordScreen> {
                     Expanded(
                       child: Text(
                         'Your account was created by an admin or your password was reset. For your security, you must choose a new password before continuing.',
-                        style: GoogleFonts.outfit(color: AppColors.primaryDark, fontSize: 14),
+                        style: GoogleFonts.outfit(color: AppColors.primary, fontSize: 14),
                       ),
                     ),
                   ],
